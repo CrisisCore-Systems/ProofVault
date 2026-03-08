@@ -7,6 +7,7 @@ import {
   defaultAttachmentFormValues,
   type AttachmentFormValues,
 } from "../../features/evidence/attachmentValidators";
+import { useVault } from "../../features/vault/VaultContext";
 
 type CaseOption = {
   id: string;
@@ -15,6 +16,7 @@ type CaseOption = {
 
 export function NewAttachment() {
   const navigate = useNavigate();
+  const { sessionKey } = useVault();
   const [values, setValues] = useState<AttachmentFormValues>(defaultAttachmentFormValues());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [cases, setCases] = useState<CaseOption[]>([]);
@@ -55,7 +57,7 @@ export function NewAttachment() {
 
     setSaving(true);
     try {
-      await saveAttachment(values, selectedFile);
+      await saveAttachment(values, selectedFile, sessionKey);
       navigate("/inbox?saved=attachment");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save attachment");

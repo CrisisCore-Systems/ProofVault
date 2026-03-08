@@ -1,7 +1,6 @@
 import { type PointerEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
-  getAttachmentByEvidenceItemId,
   getCaseById,
   getEvidenceItemById,
   getLatestLedgerEntryForAttachment,
@@ -18,6 +17,8 @@ import {
 import { appendLedgerEvent } from "../../features/ledger/chain";
 import { formatDisplayDateTime } from "../../lib/dates/format";
 import { bakeRedactedImage } from "../../lib/utils/redactionBake";
+import { useVault } from "../../features/vault/VaultContext";
+import { loadDecryptedAttachmentByEvidenceItemId } from "../../features/vault/attachmentCrypto";
 
 function formatSize(sizeBytes: number): string {
   if (sizeBytes < 1024) {
@@ -96,13 +97,16 @@ function integrityStatusLabel(status: IntegrityVerificationResult["status"]): st
   return "Unverifiable";
 }
 
-async function fetchEvidenceDetailView(evidenceId: string): Promise<EvidenceDetailView | null> {
+async function fetchEvidenceDetailView(
+  evidenceId: string,
+  key: CryptoKey | null
+): Promise<EvidenceDetailView | null> {
   const evidence = await getEvidenceItemById(evidenceId);
   if (!evidence) {
     return null;
   }
 
-  const attachment = await getAttachmentByEvidenceItemId(evidence.id);
+  const attachment = await loadDecryptedAttachmentByEvidenceItemId(evidence.id, key);
   const caseFile = evidence.caseId ? await getCaseById(evidence.caseId) : undefined;
 
   let linkedIncident: EvidenceItem | undefined;
@@ -748,6 +752,7 @@ function EvidenceControlsSection({
 
 export function EvidenceDetail() {
   const { id } = useParams<{ id: string }>();
+  const { sessionKey } = useVault();
   const [view, setView] = useState<EvidenceDetailView | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -773,7 +778,7 @@ export function EvidenceDetail() {
     setLoading(true);
     setErrorMessage(null);
 
-    const detailView = await fetchEvidenceDetailView(evidenceId);
+    const detailView = await fetchEvidenceDetailView(evidenceId, sessionKey);
     if (!detailView) {
       setView(null);
       setLedgerEntry(null);

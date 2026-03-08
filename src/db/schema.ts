@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { AttachmentRecord, CaseFile, EvidenceItem, ExportBundle, LedgerEntry } from "../domain/types";
+import type { AttachmentRecord, CaseFile, EvidenceItem, ExportBundle, LedgerEntry, VaultMeta } from "../domain/types";
 
 export class ProofVaultDB extends Dexie {
   cases!: Table<CaseFile, string>;
@@ -7,6 +7,7 @@ export class ProofVaultDB extends Dexie {
   exportBundles!: Table<ExportBundle, string>;
   attachments!: Table<AttachmentRecord, string>;
   ledger!: Table<LedgerEntry, string>;
+  vaultMeta!: Table<VaultMeta, string>;
 
   constructor() {
     super("proofvault-db");
@@ -44,6 +45,15 @@ export class ProofVaultDB extends Dexie {
       exportBundles: "id, caseId, mode, createdAt",
       attachments: "id, evidenceItemId, createdAt, mimeType",
       ledger: "id, timestamp, event, caseId, attachmentId",
+    });
+
+    this.version(6).stores({
+      cases: "id, status, type, updatedAt, lastVerifiedAt",
+      evidenceItems: "id, caseId, kind, recordedAt, occurredAt, includeInExport, updatedAt, fileRef",
+      exportBundles: "id, caseId, mode, createdAt",
+      attachments: "id, evidenceItemId, createdAt, mimeType",
+      ledger: "id, timestamp, event, caseId, attachmentId",
+      vaultMeta: "id",
     });
   }
 }

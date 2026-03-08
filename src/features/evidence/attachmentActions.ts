@@ -5,6 +5,7 @@ import { sha256HexFromBlob } from "../../lib/hashing/sha256";
 import { inferAttachmentKindFromMime, isSupportedAttachmentMime } from "./attachmentKinds";
 import type { AttachmentFormValues } from "./attachmentValidators";
 import { validateAttachmentForm } from "./attachmentValidators";
+import { encryptBlob } from "../../lib/crypto/aes";
 
 function toIsoFromLocalDateTime(value: string): string {
   return new Date(value).toISOString();
@@ -12,7 +13,8 @@ function toIsoFromLocalDateTime(value: string): string {
 
 export async function saveAttachment(
   values: AttachmentFormValues,
-  selectedFile: File
+  selectedFile: File,
+  encryptionKey?: CryptoKey | null
 ): Promise<{ evidenceItemId: string; attachmentId: string }> {
   const result = validateAttachmentForm(values);
   if (!result.success) {
@@ -38,15 +40,28 @@ export async function saveAttachment(
 
   const digest = await sha256HexFromBlob(selectedFile);
 
+  let storedBlob: Blob = selectedFile;
+  let encrypted: boolean | undefined;
+  let encryptionIv: Uint8Array | undefined;
+
+  if (encryptionKey) {
+    const result = await encryptBlob(selectedFile, encryptionKey);
+    storedBlob = new Blob([result.ciphertext]);
+    encrypted = true;
+    encryptionIv = result.iv;
+  }
+
   const attachmentRecord: AttachmentRecord = {
     id: attachmentId,
     evidenceItemId,
-    blob: selectedFile,
+    blob: storedBlob,
     sizeBytes: selectedFile.size,
     mimeType: selectedFile.type,
     originalFilename: selectedFile.name,
     createdAt: nowIso,
     updatedAt: nowIso,
+    encrypted,
+    encryptionIv,
   };
 
   const evidenceItem: EvidenceItem = {
@@ -83,6 +98,7 @@ export async function saveAttachment(
       originalFilename: selectedFile.name,
       mimeType: selectedFile.type,
       sizeBytes: selectedFile.size,
+      encrypted: encrypted ?? false,
     },
   });
 
@@ -98,3 +114,4 @@ export async function saveAttachment(
 
   return { evidenceItemId, attachmentId };
 }
+

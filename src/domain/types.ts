@@ -60,6 +60,16 @@ export type AttachmentRecord = {
   originalFilename: string;
   createdAt: string;
   updatedAt?: string;
+  encrypted?: boolean;
+  encryptionIv?: Uint8Array;
+};
+
+export type VaultMeta = {
+  id: "singleton";
+  salt: Uint8Array;
+  verifierCiphertext: ArrayBuffer;
+  verifierIv: Uint8Array;
+  createdAt: string;
 };
 
 export type LedgerEntry = {

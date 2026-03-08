@@ -24,6 +24,8 @@ import { saveAttachment } from "../../features/evidence/attachmentActions";
 import { getLedgerHealth, type LedgerHealth } from "../../features/ledger/chain";
 import { appendLedgerEvent } from "../../features/ledger/chain";
 import { bakeRedactedImage } from "../../lib/utils/redactionBake";
+import { useVault } from "../../features/vault/VaultContext";
+import { loadDecryptedAttachmentByEvidenceItemId } from "../../features/vault/attachmentCrypto";
 
 type CaseWithPreview = {
   caseFile: CaseFile;
@@ -239,6 +241,7 @@ function extensionFromMimeType(mimeType?: string): string {
 }
 
 export function Cases() {
+  const { sessionKey } = useVault();
   const [cases, setCases] = useState<CaseWithPreview[]>([]);
   const [verificationByCaseId, setVerificationByCaseId] = useState<Record<string, CaseVerificationState>>({});
   const [exportByCaseId, setExportByCaseId] = useState<Record<string, CaseExportState>>({});
@@ -359,7 +362,7 @@ export function Cases() {
             return { evidence, sizeBytes: undefined, mimeType: evidence.mimeType, sha256: evidence.sha256 };
           }
 
-          const attachment = await getAttachmentByEvidenceItemId(evidence.id);
+          const attachment = await loadDecryptedAttachmentByEvidenceItemId(evidence.id, sessionKey);
           if (!attachment) {
             return {
               evidence,
@@ -467,7 +470,7 @@ export function Cases() {
 
     try {
       const report = await verifyCaseEvidenceIntegrity(caseItems, (evidenceItem) =>
-        getAttachmentByEvidenceItemId(evidenceItem.id),
+        loadDecryptedAttachmentByEvidenceItemId(evidenceItem.id, sessionKey),
         caseFile.lastVerifiedAt
       );
 
@@ -527,7 +530,8 @@ export function Cases() {
         caseId: caseFile.id,
         recordedAt: localDateTimeNowValue(),
       },
-      file
+      file,
+      sessionKey
     );
   };
 

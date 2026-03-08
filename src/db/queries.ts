@@ -1,4 +1,4 @@
-import type { AttachmentRecord, CaseFile, EvidenceItem, ExportBundle, LedgerEntry, RedactionRegion } from "../domain/types";
+import type { AttachmentRecord, CaseFile, EvidenceItem, ExportBundle, LedgerEntry, RedactionRegion, VaultMeta } from "../domain/types";
 import { db } from "./index";
 
 export async function listCases(): Promise<CaseFile[]> {
@@ -143,4 +143,12 @@ export async function getLatestLedgerEntryForAttachment(
 
 export async function listLedgerEntries(): Promise<LedgerEntry[]> {
   return db.ledger.orderBy("timestamp").toArray();
+}
+
+export async function getVaultMeta(): Promise<VaultMeta | undefined> {
+  return db.vaultMeta.get("singleton");
+}
+
+export async function saveVaultMeta(meta: VaultMeta): Promise<void> {
+  await db.vaultMeta.put(meta);
 }
