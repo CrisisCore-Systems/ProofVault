@@ -98,7 +98,7 @@ export async function saveAttachment(
       originalFilename: selectedFile.name,
       mimeType: selectedFile.type,
       sizeBytes: selectedFile.size,
-      encrypted: encrypted ?? false,
+      encrypted: !!encrypted,
     },
   });
 
