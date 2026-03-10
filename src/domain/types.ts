@@ -3,10 +3,18 @@ export type CaseFile = {
   title: string;
   type: "housing" | "work" | "legal" | "medical" | "family" | "other";
   description?: string;
+  encryptedPayload?: EncryptedPayload;
   status: "active" | "archived" | "draft";
   lastVerifiedAt?: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type EncryptedPayload = {
+  version: 1;
+  algorithm: "AES-GCM";
+  iv: string;
+  ciphertext: string;
 };
 
 export type RedactionRegion = {
@@ -23,6 +31,7 @@ export type EvidenceItem = {
   kind: "incident" | "photo" | "screenshot" | "pdf" | "audio" | "note";
   title: string;
   description?: string;
+  encryptedPayload?: EncryptedPayload;
   occurredAt?: string;
   recordedAt: string;
   importedAt?: string;

@@ -1,76 +1,11 @@
-import { useEffect, useState, type ChangeEvent, type SyntheticEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { SectionHeader } from "../../components/ui/SectionHeader";
-import { getCasesForSelect } from "../../db/queries";
-import { saveAttachment } from "../../features/evidence/attachmentActions";
-import {
-  defaultAttachmentFormValues,
-  type AttachmentFormValues,
-} from "../../features/evidence/attachmentValidators";
-import { useVault } from "../../features/vault/VaultContext";
-
-type CaseOption = {
-  id: string;
-  title: string;
-};
+import { useNewAttachment } from "../../features/evidence/useNewAttachment";
 
 export function NewAttachment() {
   const navigate = useNavigate();
-  const { sessionKey } = useVault();
-  const [values, setValues] = useState<AttachmentFormValues>(defaultAttachmentFormValues());
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [cases, setCases] = useState<CaseOption[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    const loadCases = async () => {
-      const caseOptions = await getCasesForSelect();
-      setCases(caseOptions);
-    };
-
-    void loadCases();
-  }, []);
-
-  const setField = <K extends keyof AttachmentFormValues>(
-    field: K,
-    value: AttachmentFormValues[K]
-  ) => {
-    setValues((previous) => ({ ...previous, [field]: value }));
-  };
-
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
-    setSelectedFile(file);
-
-    if (file && !values.title.trim()) {
-      const titleFromName = file.name.replace(/\.[^/.]+$/, "");
-      setValues((previous) => ({ ...previous, title: titleFromName || file.name }));
-    }
-  };
-
-  const persistAttachment = async () => {
-    if (!selectedFile) {
-      setErrorMessage("Select a file to continue");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await saveAttachment(values, selectedFile, sessionKey);
-      navigate("/inbox?saved=attachment");
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to save attachment");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setErrorMessage(null);
-    void persistAttachment();
-  };
+  const { values, selectedFile, cases, errorMessage, saving, setField, handleFileChange, handleSubmit } =
+    useNewAttachment(navigate);
 
   return (
     <section className="mx-auto w-full max-w-3xl">

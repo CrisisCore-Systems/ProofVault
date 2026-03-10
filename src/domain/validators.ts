@@ -1,10 +1,18 @@
 import { z } from "zod";
 
+const EncryptedPayloadSchema = z.object({
+  version: z.literal(1),
+  algorithm: z.literal("AES-GCM"),
+  iv: z.string().min(1),
+  ciphertext: z.string().min(1),
+});
+
 export const CaseFileSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   type: z.enum(["housing", "work", "legal", "medical", "family", "other"]),
   description: z.string().optional(),
+  encryptedPayload: EncryptedPayloadSchema.optional(),
   status: z.enum(["active", "archived", "draft"]),
   lastVerifiedAt: z.iso.datetime().optional(),
   createdAt: z.iso.datetime(),
@@ -41,6 +49,7 @@ export const EvidenceItemSchema = z.object({
   kind: z.enum(["incident", "photo", "screenshot", "pdf", "audio", "note"]),
   title: z.string().min(1),
   description: z.string().optional(),
+  encryptedPayload: EncryptedPayloadSchema.optional(),
   occurredAt: z.iso.datetime().optional(),
   recordedAt: z.iso.datetime(),
   importedAt: z.iso.datetime().optional(),

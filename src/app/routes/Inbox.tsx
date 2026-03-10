@@ -1,7 +1,3 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import type { EvidenceItem } from "../../domain/types";
-import { listInboxEvidenceItems } from "../../db/queries";
 import { AddAttachmentButton } from "../../components/ui/AddAttachmentButton";
 import { EmptyStateCard } from "../../components/ui/EmptyStateCard";
 import { EvidenceItemSummary } from "../../components/ui/EvidenceItemSummary";
@@ -9,27 +5,10 @@ import { SectionHeader } from "../../components/ui/SectionHeader";
 import { SeedDataButton } from "../../components/ui/SeedDataButton";
 import { formatDisplayDateTime } from "../../lib/dates/format";
 import { NewIncidentButton } from "../../components/ui/NewIncidentButton";
+import { useInboxOverview } from "../../features/evidence/useInboxOverview";
 
 export function Inbox() {
-  const [items, setItems] = useState<EvidenceItem[]>([]);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const savedType = searchParams.get("saved");
-  const showSavedFeedback = savedType === "incident" || savedType === "attachment";
-
-  const load = async () => {
-    const data = await listInboxEvidenceItems();
-    setItems(data);
-  };
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  const dismissSavedFeedback = () => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("saved");
-    setSearchParams(next, { replace: true });
-  };
+  const { items, load, savedFeedbackMessage, dismissSavedFeedback } = useInboxOverview();
 
   return (
     <section>
@@ -45,9 +24,9 @@ export function Inbox() {
         }
       />
 
-      {showSavedFeedback ? (
+      {savedFeedbackMessage ? (
         <div className="mb-3 flex items-center justify-between rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-          <span>{savedType === "attachment" ? "Attachment saved locally." : "Incident saved locally."}</span>
+          <span>{savedFeedbackMessage}</span>
           <button type="button" onClick={dismissSavedFeedback} className="text-xs text-emerald-300 hover:text-emerald-100">
             Dismiss
           </button>

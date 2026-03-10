@@ -1,54 +1,10 @@
-import { useEffect, useState, type SyntheticEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getCasesForSelect } from "../../db/queries";
-import type { IncidentFormValues } from "../../features/evidence/incidentForm";
-import { defaultIncidentFormValues } from "../../features/evidence/incidentForm";
-import { saveIncident } from "../../features/evidence/incidentActions";
 import { SectionHeader } from "../../components/ui/SectionHeader";
-
-type CaseOption = {
-  id: string;
-  title: string;
-};
+import { useNewIncident } from "../../features/evidence/useNewIncident";
 
 export function NewIncident() {
   const navigate = useNavigate();
-  const [values, setValues] = useState<IncidentFormValues>(defaultIncidentFormValues());
-  const [cases, setCases] = useState<CaseOption[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    const loadCases = async () => {
-      const caseOptions = await getCasesForSelect();
-      setCases(caseOptions);
-    };
-
-    void loadCases();
-  }, []);
-
-  const setField = <K extends keyof IncidentFormValues>(field: K, value: IncidentFormValues[K]) => {
-    setValues((previous) => ({ ...previous, [field]: value }));
-  };
-
-  const persistIncident = async () => {
-    setSaving(true);
-
-    try {
-      await saveIncident(values);
-      navigate("/inbox?saved=incident");
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to save incident");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setErrorMessage(null);
-    void persistIncident();
-  };
+  const { values, cases, errorMessage, saving, setField, handleSubmit } = useNewIncident(navigate);
 
   return (
     <section className="mx-auto w-full max-w-3xl">
