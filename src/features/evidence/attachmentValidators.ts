@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { format } from "date-fns";
+import { nowAsLocalDateTimeString } from "../../lib/dates/format";
 
 const DATETIME_LOCAL_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
@@ -15,7 +15,7 @@ export function defaultAttachmentFormValues(): AttachmentFormValues {
     title: "",
     description: "",
     caseId: "",
-    recordedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    recordedAt: nowAsLocalDateTimeString(),
   };
 }
 
