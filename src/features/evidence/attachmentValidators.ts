@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { format } from "date-fns";
 
 const DATETIME_LOCAL_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
@@ -10,16 +11,11 @@ export type AttachmentFormValues = {
 };
 
 export function defaultAttachmentFormValues(): AttachmentFormValues {
-  const now = new Date();
-  const localValue = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-
   return {
     title: "",
     description: "",
     caseId: "",
-    recordedAt: localValue,
+    recordedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
   };
 }
 

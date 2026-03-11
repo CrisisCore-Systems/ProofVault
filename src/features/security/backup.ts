@@ -9,8 +9,9 @@ import {
 } from "./session";
 import { createRandomBase64, decryptJson, deriveAesKeyFromPassphrase, encryptJson } from "./crypto";
 
-type SerializedAttachmentRecord = Omit<AttachmentRecord, "blob"> & {
+type SerializedAttachmentRecord = Omit<AttachmentRecord, "blob" | "encryptionIv"> & {
   blobBase64: string;
+  encryptionIvBase64?: string;
 };
 
 type VaultBackupSnapshot = {
@@ -291,6 +292,8 @@ export async function exportEncryptedBackup(backupPassphrase: string): Promise<v
       originalFilename: attachment.originalFilename,
       createdAt: attachment.createdAt,
       updatedAt: attachment.updatedAt,
+      encrypted: attachment.encrypted,
+      encryptionIvBase64: attachment.encryptionIv ? bytesToBase64(attachment.encryptionIv) : undefined,
     }))
   );
 
@@ -362,6 +365,8 @@ export async function importEncryptedBackup(
         originalFilename: attachment.originalFilename,
         createdAt: attachment.createdAt,
         updatedAt: attachment.updatedAt,
+        encrypted: attachment.encrypted,
+        encryptionIv: attachment.encryptionIvBase64 ? base64ToBytes(attachment.encryptionIvBase64) : undefined,
       }))
     : [];
 
