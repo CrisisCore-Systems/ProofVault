@@ -8,3 +8,7 @@ export function formatDisplayDateTime(isoDateTime: string): string {
 
   return format(parsedDate, "yyyy-MM-dd HH:mm");
 }
+
+export function nowAsLocalDateTimeString(): string {
+  return format(new Date(), "yyyy-MM-dd'T'HH:mm");
+}

@@ -47,7 +47,7 @@ export const EvidenceItemSchema = z.object({
   id: z.string().min(1),
   caseId: z.string().min(1).optional(),
   kind: z.enum(["incident", "photo", "screenshot", "pdf", "audio", "note"]),
-  title: z.string().min(1),
+  title: z.string().trim().min(1),
   description: z.string().optional(),
   encryptedPayload: EncryptedPayloadSchema.optional(),
   occurredAt: z.iso.datetime().optional(),
