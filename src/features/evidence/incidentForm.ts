@@ -1,3 +1,5 @@
+import { format } from "date-fns";
+
 export type IncidentFormValues = {
   title: string;
   recordedAt: string;
@@ -11,14 +13,9 @@ export type IncidentFormValues = {
 };
 
 export function defaultIncidentFormValues(): IncidentFormValues {
-  const now = new Date();
-  const localValue = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-
   return {
     title: "",
-    recordedAt: localValue,
+    recordedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     occurredAt: "",
     locationText: "",
     peopleInvolved: "",

@@ -9,7 +9,7 @@ const EncryptedPayloadSchema = z.object({
 
 export const CaseFileSchema = z.object({
   id: z.string().min(1),
-  title: z.string().min(1),
+  title: z.string().trim().min(1),
   type: z.enum(["housing", "work", "legal", "medical", "family", "other"]),
   description: z.string().optional(),
   encryptedPayload: EncryptedPayloadSchema.optional(),

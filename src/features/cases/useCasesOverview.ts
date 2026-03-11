@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { format } from "date-fns";
 import type { CaseFile, EvidenceItem } from "../../domain/types";
 import {
   getAttachmentByEvidenceItemId,
@@ -37,8 +38,7 @@ function parseIsoToEpoch(value?: string): number | undefined {
 }
 
 function localDateTimeNowValue(): string {
-  const now = new Date();
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  return format(new Date(), "yyyy-MM-dd'T'HH:mm");
 }
 
 export function deriveCaseAttachmentState(
