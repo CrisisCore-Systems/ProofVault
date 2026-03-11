@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { nowAsLocalDateTimeString } from "../../lib/dates/format";
 
 export type IncidentFormValues = {
   title: string;
@@ -15,7 +15,7 @@ export type IncidentFormValues = {
 export function defaultIncidentFormValues(): IncidentFormValues {
   return {
     title: "",
-    recordedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    recordedAt: nowAsLocalDateTimeString(),
     occurredAt: "",
     locationText: "",
     peopleInvolved: "",
