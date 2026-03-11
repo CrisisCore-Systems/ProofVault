@@ -1,1 +1,0 @@
-import{j as e}from"./index-DAabJxYT.js";function r({title:t,subtitle:s,rightSlot:i}){return e.jsxs("div",{className:"mb-4 flex items-start justify-between gap-4",children:[e.jsxs("div",{children:[e.jsx("h2",{className:"text-lg font-semibold text-zinc-100",children:t}),s?e.jsx("p",{className:"text-sm text-zinc-400",children:s}):null]}),i]})}export{r as S};
