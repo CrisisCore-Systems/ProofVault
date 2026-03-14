@@ -28,70 +28,7 @@ jobs:
         env:
           TRUST_CASE_DIFF_PATH: trust-case-demo.diff
           TRUST_CASE_STATUS_PATH: trust-case-demo.status
-          TRUST_CASE_OUTPUT_DIR_PATH: trust-case-output-dir.txt
-          TRUST_CASE_DEBUG_SUMMARY_PATH: trust-case-debug-summary.txt
-          TRUST_CASE_RETAIN_OUTPUT_DIR: '1'
         run: npm run check:trust-case
-
-      - name: Capture trust-case runner diagnostics
-        if: failure()
-        shell: bash
-        run: |
-          set +e
-          OUTPUT_DIR="$(cat trust-case-output-dir.txt 2>/dev/null || true)"
-          GENERATED_ZIP="$(find "$OUTPUT_DIR" -maxdepth 1 -type f -name '*.zip' | head -n 1)"
-          TRACKED_ZIP="$(find docs/trust-case/demo -maxdepth 1 -type f -name '*.zip' | head -n 1)"
-          {
-            echo "node=$(node -v)"
-            echo "npm=$(npm -v)"
-            echo "timezone=$(date +%Z)"
-            echo "locale_start"
-            locale
-            echo "locale_end"
-            echo "pwd=$(pwd)"
-            echo "checkout=$(git rev-parse --show-toplevel)"
-            echo "output_dir=$OUTPUT_DIR"
-            echo
-            echo "git status --short"
-            git status --short
-            echo
-            echo "git diff --stat"
-            git diff --stat
-            echo
-            echo "git config --list --show-origin"
-            git config --list --show-origin
-            echo
-            echo "sha256 docs/trust-case/demo/EXPECTED_OUTPUTS.json"
-            sha256sum docs/trust-case/demo/EXPECTED_OUTPUTS.json
-            if [ -n "$TRACKED_ZIP" ]; then
-              echo
-              echo "sha256 tracked zip"
-              sha256sum "$TRACKED_ZIP"
-            fi
-            if [ -n "$GENERATED_ZIP" ]; then
-              echo
-              echo "sha256 generated zip"
-              sha256sum "$GENERATED_ZIP"
-            fi
-            if [ -n "$OUTPUT_DIR" ]; then
-              echo
-              echo "generated files"
-              find "$OUTPUT_DIR" -maxdepth 2 -type f | sort
-            fi
-          } > trust-case-runner-debug.txt
-          if command -v unzip >/dev/null 2>&1; then
-            {
-              if [ -n "$TRACKED_ZIP" ]; then
-                echo "tracked zip listing"
-                unzip -lv "$TRACKED_ZIP"
-              fi
-              if [ -n "$GENERATED_ZIP" ]; then
-                echo
-                echo "generated zip listing"
-                unzip -lv "$GENERATED_ZIP"
-              fi
-            } > trust-case-archive-listing.txt
-          fi
 
       - name: Upload trust-case expectation artifact
         if: always()
@@ -110,7 +47,3 @@ jobs:
           path: |
             trust-case-demo.diff
             trust-case-demo.status
-            trust-case-debug-summary.txt
-            trust-case-output-dir.txt
-            trust-case-runner-debug.txt
-            trust-case-archive-listing.txt
