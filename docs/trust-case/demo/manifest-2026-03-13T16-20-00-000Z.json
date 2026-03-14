@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-03-13T16:20:00.000Z",
+  "outputFormat": "zip",
+  "case": {
+    "id": "case-trust-2026-001",
+    "title": "Trust Case Specimen",
+    "type": "housing",
+    "status": "active"
+  },
+  "options": {
+    "mode": "full",
+    "includeAttachments": true,
+    "includeMetadataAppendix": true,
+    "startDate": null,
+    "endDate": null
+  },
+  "counts": {
+    "items": 2,
+    "timelineEvents": 2,
+    "attachments": 1,
+    "metadataEntries": 2
+  },
+  "files": {
+    "manifest": "manifest-2026-03-13T16-20-00-000Z.json",
+    "timelineMarkdown": "timeline.md",
+    "timelineCsv": "timeline.csv",
+    "caseSummary": "case-summary.txt",
+    "fingerprint": "FINGERPRINT.txt",
+    "evidenceProof": "proof-vault-evidence.json",
+    "metadataAppendix": "metadata-appendix.md",
+    "ledgerAudit": "ledger-audit.json"
+  },
+  "items": [
+    {
+      "id": "ev-trust-incident-001",
+      "title": "Access denial documented",
+      "kind": "incident",
+      "timestamp": "2026-03-11T09:05:00.000Z",
+      "recordedAt": "2026-03-11T09:09:00.000Z",
+      "occurredAt": "2026-03-11T09:05:00.000Z",
+      "includeInExport": true,
+      "redactionStatus": "none",
+      "dateCertainty": "exact",
+      "attachmentStatus": "not-applicable",
+      "omissionReason": "no-attachment"
+    },
+    {
+      "id": "ev-trust-doc-002",
+      "title": "Door notice scan",
+      "kind": "pdf",
+      "timestamp": "2026-03-12T14:20:00.000Z",
+      "recordedAt": "2026-03-12T14:20:00.000Z",
+      "includeInExport": true,
+      "redactionStatus": "none",
+      "dateCertainty": "exact",
+      "originalFilename": "door-notice.pdf",
+      "mimeType": "application/pdf",
+      "sha256": "192204ef68fceebc16f38cc1e8312882b3f36dfc407276795dd9c1c815dfd8f8",
+      "attachmentPath": "attachments/door-notice.pdf",
+      "attachmentStatus": "included"
+    }
+  ]
+}

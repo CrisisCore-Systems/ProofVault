@@ -1,0 +1,12 @@
+ProofVault Export Fingerprint
+
+Case: Trust Case Specimen
+Case ID: case-trust-2026-001
+Exported At: 2026-03-13 09:20
+Proof Manifest: proof-vault-evidence.json
+
+Manifest Fingerprint: C734-61F3-65B5-2AFA
+Manifest Seal SHA-256: c73461f365b52afaafbf9b0efc21c81339d356121b45b769f223c64f7671ae62
+
+Use the manifest fingerprint as a spoken cross-check before opening the app, PDF, or JSON report.
+After verification, the generated report will include its own report checksum for a second cross-check.

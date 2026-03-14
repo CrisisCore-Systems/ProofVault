@@ -1,0 +1,3 @@
+timestamp,id,title,kind,recordedAt,occurredAt,caseId,includeInExport,redactionStatus,dateCertainty,peopleInvolved,tags
+2026-03-11T09:05:00.000Z,ev-trust-incident-001,Access denial documented,incident,2026-03-11T09:09:00.000Z,2026-03-11T09:05:00.000Z,case-trust-2026-001,true,none,exact,Front desk clerk | Neighbor witness,access | housing | witness
+2026-03-12T14:20:00.000Z,ev-trust-doc-002,Door notice scan,pdf,2026-03-12T14:20:00.000Z,,case-trust-2026-001,true,none,exact,,

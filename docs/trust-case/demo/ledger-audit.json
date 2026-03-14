@@ -1,0 +1,31 @@
+{
+  "caseId": "case-trust-2026-001",
+  "caseTitle": "Trust Case Specimen",
+  "exportedAt": "2026-03-13T16:20:00.000Z",
+  "entries": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "timestamp": "2026-03-13T16:20:00.000Z",
+      "event": "case.created",
+      "caseId": "case-trust-2026-001",
+      "data": {
+        "title": "Trust Case Specimen",
+        "type": "housing"
+      },
+      "hash": "50808ee837de395dd73bd55da3e41d6a2277ad5aca5e2afa1f48b68490dd9a12"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "timestamp": "2026-03-13T16:20:00.000Z",
+      "event": "evidence.linked",
+      "caseId": "case-trust-2026-001",
+      "attachmentId": "att-trust-doc-002",
+      "data": {
+        "evidenceId": "ev-trust-doc-002",
+        "sha256": "192204ef68fceebc16f38cc1e8312882b3f36dfc407276795dd9c1c815dfd8f8"
+      },
+      "prevHash": "50808ee837de395dd73bd55da3e41d6a2277ad5aca5e2afa1f48b68490dd9a12",
+      "hash": "6decfdec2715ee85a12caec2ead396e97df6abdb3f0591e7a430fa75ca4b1885"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "caseId": "case-trust-2026-001",
+  "exportedAt": "2026-03-13T16:20:00.000Z",
+  "outputFormat": "zip",
+  "recordCount": 2,
+  "evidenceRecords": [
+    {
+      "sourceId": "ev-trust-incident-001",
+      "provenance": {
+        "integrityRef": "18b9af23e7f0f66413ef5a22269f83f756a61b7e08b6e52ec3f4011a3bbf82ec",
+        "encryptedPayloadRef": "de12580a3c498a05e0a736ceaaa27135da16b2559313f565a1426a9dd03ad605",
+        "sourceSnapshotRef": "d29437ed453122c3bd5e5c51140206b326caa321a1184597f91389b43a7abaa0",
+        "attachmentRef": null
+      },
+      "exportContext": {
+        "redactionPolicy": {
+          "id": "full",
+          "mode": "full",
+          "label": "Full",
+          "omittedFields": [],
+          "includeAttachments": true,
+          "includeMetadataAppendix": true
+        },
+        "exportTimestamp": "2026-03-13T16:20:00.000Z",
+        "outputFormat": "zip"
+      },
+      "omittedFields": [],
+      "integritySeal": "ad0cccf814f7a5361d1c0e1250b49054dea61d3923422c05b868194aa8a980ec"
+    },
+    {
+      "sourceId": "ev-trust-doc-002",
+      "provenance": {
+        "integrityRef": "777befc4a35abe46df807169034f7caef59c74cadb139bfcf781e5119a17bd2f",
+        "encryptedPayloadRef": "f09727b7b65a7d357fc40f959a921c13910451ccaf10c355aa0521ec8c2cf097",
+        "sourceSnapshotRef": "3a25f0e6d1f37f94707672817a4abfee49a4f0162c3608eb61e60ef6d14e421a",
+        "attachmentRef": "192204ef68fceebc16f38cc1e8312882b3f36dfc407276795dd9c1c815dfd8f8"
+      },
+      "exportContext": {
+        "redactionPolicy": {
+          "id": "full",
+          "mode": "full",
+          "label": "Full",
+          "omittedFields": [],
+          "includeAttachments": true,
+          "includeMetadataAppendix": true
+        },
+        "exportTimestamp": "2026-03-13T16:20:00.000Z",
+        "outputFormat": "zip"
+      },
+      "omittedFields": [],
+      "integritySeal": "1c3807b3ac23c569c2567924f983a07d9fcc28b1a8b4d3e1bf7e9b1c0730d0a4"
+    }
+  ],
+  "integritySeal": "c73461f365b52afaafbf9b0efc21c81339d356121b45b769f223c64f7671ae62"
+}

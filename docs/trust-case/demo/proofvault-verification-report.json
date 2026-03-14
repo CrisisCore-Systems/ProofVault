@@ -1,0 +1,56 @@
+{
+  "format": "proofvault-verification-report",
+  "version": 1,
+  "generatedAt": "2026-03-13T16:24:00.000Z",
+  "status": "verified",
+  "verificationSource": "backup-snapshot",
+  "manifest": {
+    "caseId": "case-trust-2026-001",
+    "caseTitle": "Trust Case Specimen",
+    "exportedAt": "2026-03-13T16:20:00.000Z",
+    "outputFormat": "zip",
+    "recordCount": 2,
+    "integritySeal": "c73461f365b52afaafbf9b0efc21c81339d356121b45b769f223c64f7671ae62",
+    "redactionPolicy": {
+      "id": "full",
+      "label": "Full",
+      "mode": "full",
+      "includeAttachments": true,
+      "includeMetadataAppendix": true,
+      "omittedFields": [],
+      "translation": {
+        "heading": "Full disclosure policy",
+        "summary": "This policy preserves the full export context without policy-driven field omissions.",
+        "attachmentHandling": "Attachments were included in full.",
+        "metadataAppendixHandling": "The metadata appendix was included to preserve supporting context.",
+        "omittedFieldLabels": []
+      }
+    }
+  },
+  "sourceSnapshot": {
+    "backupSnapshotSha256": "a022149b5360440b2836cd7bc69830280af19694ba18c7fb6fee9aee7c29d350",
+    "backupExportedAt": "2026-03-13T16:20:00.000Z",
+    "evidenceItemsChecked": 3
+  },
+  "verification": {
+    "status": "verified",
+    "issues": [],
+    "verified": 2,
+    "mismatched": 0,
+    "missing": 0,
+    "manifestSealValid": true,
+    "records": [
+      {
+        "sourceId": "ev-trust-incident-001",
+        "status": "verified",
+        "issues": []
+      },
+      {
+        "sourceId": "ev-trust-doc-002",
+        "status": "verified",
+        "issues": []
+      }
+    ]
+  },
+  "reportSha256": "eb961ea9b3246d1010cf4b5aa8529a7af93e34bc703acc2839a12b94d06835f4"
+}

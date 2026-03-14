@@ -1,0 +1,33 @@
+{
+  "release": "ProofVault Trust Case v1.0",
+  "build": {
+    "gitRef": "REPLACE_WITH_COMMIT",
+    "generatedAt": "REPLACE_WITH_ISO_TIMESTAMP"
+  },
+  "fixture": {
+    "caseId": "REPLACE_WITH_CASE_ID",
+    "caseTitle": "REPLACE_WITH_CASE_TITLE",
+    "exportedAt": "REPLACE_WITH_EXPORT_TIMESTAMP",
+    "recordCount": 0,
+    "validRunStatus": "verified",
+    "tamperRunStatus": "mismatch"
+  },
+  "files": {
+    "exportZip": "proofvault-demo-export.zip",
+    "encryptedBackup": "proofvault-demo-backup.pvault",
+    "proofManifest": "proof-vault-evidence.json",
+    "verificationReport": "proofvault-verification-demo.json",
+    "certificatePdf": "proofvault-verification-demo.pdf",
+    "fingerprint": "FINGERPRINT.expected.txt"
+  },
+  "checksums": {
+    "manifestIntegritySeal": "REPLACE_WITH_SHA256",
+    "shortManifestFingerprint": "REPLACE_WITH_GROUPED_FINGERPRINT",
+    "verificationReportSha256": "REPLACE_WITH_SHA256",
+    "backupSnapshotSha256": "REPLACE_WITH_SHA256"
+  },
+  "notes": [
+    "Replace every placeholder with values generated from the frozen release build.",
+    "Add a short tamper summary describing what was modified and which mismatch signals were observed."
+  ]
+}

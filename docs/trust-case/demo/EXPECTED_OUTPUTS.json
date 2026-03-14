@@ -1,0 +1,106 @@
+{
+  "release": "ProofVault Trust Case v1.0",
+  "build": {
+    "gitRef": "bd968e91a1fd58384b2af2eb389402728c9980f3",
+    "generatedAt": "2026-03-13T16:20:00.000Z",
+    "runtime": {
+      "node": "v22.19.0",
+      "webCrypto": true,
+      "deterministicHarness": true
+    }
+  },
+  "fixture": {
+    "caseId": "case-trust-2026-001",
+    "caseTitle": "Trust Case Specimen",
+    "exportMode": "full",
+    "includeAttachments": true,
+    "includeMetadataAppendix": true,
+    "exportedAt": "2026-03-13T16:20:00.000Z",
+    "recordCount": 2,
+    "archiveFiles": [
+      "attachments/",
+      "attachments/door-notice.pdf",
+      "case-summary.txt",
+      "FINGERPRINT.txt",
+      "ledger-audit.json",
+      "manifest-2026-03-13T16-20-00-000Z.json",
+      "metadata-appendix.md",
+      "proof-vault-evidence.json",
+      "timeline.csv",
+      "timeline.md"
+    ],
+    "validRunStatus": "verified",
+    "tamperRunStatus": "mismatch"
+  },
+  "files": {
+    "exportZip": "proofvault-trust-case-specimen-full-2026-03-13T16-20-00-000Z.zip",
+    "encryptedBackup": "proofvault-backup-2026-03-13.pvault",
+    "exportManifest": "manifest-2026-03-13T16-20-00-000Z.json",
+    "proofManifest": "proof-vault-evidence.json",
+    "verificationReport": "proofvault-verification-report.json",
+    "tamperedVerificationReport": "proofvault-verification-report-tampered.json",
+    "certificate": "proofvault-verification-certificate.html",
+    "fingerprint": "FINGERPRINT.txt",
+    "metadataAppendix": "metadata-appendix.md",
+    "ledgerAudit": "ledger-audit.json"
+  },
+  "checksums": {
+    "manifestIntegritySeal": "c73461f365b52afaafbf9b0efc21c81339d356121b45b769f223c64f7671ae62",
+    "shortManifestFingerprint": "C734-61F3-65B5-2AFA",
+    "verificationReportSha256": "eb961ea9b3246d1010cf4b5aa8529a7af93e34bc703acc2839a12b94d06835f4",
+    "tamperedVerificationReportSha256": "43ecef38b411cf10195c97f08296bc50639651dd87ce2c719259c642c04a789e",
+    "backupSnapshotSha256": "a022149b5360440b2836cd7bc69830280af19694ba18c7fb6fee9aee7c29d350",
+    "attachmentSha256": "192204ef68fceebc16f38cc1e8312882b3f36dfc407276795dd9c1c815dfd8f8"
+  },
+  "verification": {
+    "valid": {
+      "status": "verified",
+      "issues": [],
+      "verified": 2,
+      "mismatched": 0,
+      "missing": 0,
+      "manifestSealValid": true,
+      "records": [
+        {
+          "sourceId": "ev-trust-incident-001",
+          "status": "verified",
+          "issues": []
+        },
+        {
+          "sourceId": "ev-trust-doc-002",
+          "status": "verified",
+          "issues": []
+        }
+      ]
+    },
+    "tampered": {
+      "status": "mismatch",
+      "issues": [
+        "Manifest integrity seal does not match the embedded evidence records."
+      ],
+      "verified": 1,
+      "mismatched": 1,
+      "missing": 0,
+      "manifestSealValid": false,
+      "records": [
+        {
+          "sourceId": "ev-trust-incident-001",
+          "status": "mismatch",
+          "issues": [
+            "Integrity reference does not match current vault state."
+          ]
+        },
+        {
+          "sourceId": "ev-trust-doc-002",
+          "status": "verified",
+          "issues": []
+        }
+      ]
+    }
+  },
+  "notes": [
+    "The fixture is generated under a fixed Date shim and deterministic random values so names, hashes, and encryption envelopes are stable.",
+    "The printable certificate is emitted as HTML because the current implementation opens a print-ready document rather than exporting a PDF file directly.",
+    "The ledger audit captured inside the ZIP reflects the case ledger before the export.generated event is appended at the end of archive creation."
+  ]
+}

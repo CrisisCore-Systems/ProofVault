@@ -1,0 +1,13 @@
+ProofVault Export Summary
+
+Case: Trust Case Specimen
+Case ID: case-trust-2026-001
+Case Type: housing
+Case Status: active
+Exported At: 2026-03-13 09:20
+Mode: full
+Date Range: start → latest
+Items Exported: 2
+Attachments Exported: 1
+Include Attachments: yes
+Include Metadata Appendix: yes
