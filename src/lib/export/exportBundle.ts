@@ -148,6 +148,24 @@ function toExportStamp(isoDate: string): string {
   return isoDate.replaceAll(/[:.]/g, "-");
 }
 
+function createStableZipEntryDate(isoDateTime: string): Date {
+  const parsedDate = new Date(isoDateTime);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return new Date(0);
+  }
+
+  return new Date(
+    parsedDate.getUTCFullYear(),
+    parsedDate.getUTCMonth(),
+    parsedDate.getUTCDate(),
+    parsedDate.getUTCHours(),
+    parsedDate.getUTCMinutes(),
+    parsedDate.getUTCSeconds(),
+    parsedDate.getUTCMilliseconds()
+  );
+}
+
 function isWithinDateRange(item: EvidenceItem, startDate?: string, endDate?: string): boolean {
   const timestamp = Date.parse(resolveTimelineTimestamp(item));
   const startEpoch = startDate ? Date.parse(`${startDate}T00:00:00`) : undefined;
@@ -483,7 +501,8 @@ async function processExportItem({
   attachmentsFolder,
   usedAttachmentNames,
   caseAttachmentIds,
-}: ProcessExportItemParams): Promise<ProcessExportItemResult> {
+  zipEntryDate,
+}: ProcessExportItemParams & { zipEntryDate: Date }): Promise<ProcessExportItemResult> {
   const baseMeta = buildBaseEvidenceMeta(item);
 
   if (!item.fileRef) {
@@ -547,7 +566,7 @@ async function processExportItem({
   const outputName = isRedactedDerivative ? addSuffixBeforeExtension(originalName, "_redacted") : originalName;
   const finalName = withUniqueName(outputName, usedAttachmentNames);
 
-  attachmentsFolder?.file(finalName, await outputBlob.arrayBuffer());
+  attachmentsFolder?.file(finalName, await outputBlob.arrayBuffer(), { date: zipEntryDate });
 
   return {
     evidenceMeta: {
@@ -571,6 +590,7 @@ async function processExportItem({
 
 export async function generateExportPacket(options: ExportPacketOptions): Promise<ExportPacketResult> {
   const exportedAt = new Date().toISOString();
+  const zipEntryDate = createStableZipEntryDate(exportedAt);
   const selectedItems = options.items
     .filter((item) => item.includeInExport && isWithinDateRange(item, options.startDate, options.endDate))
     .sort((left, right) => Date.parse(resolveTimelineTimestamp(left)) - Date.parse(resolveTimelineTimestamp(right)));
@@ -580,6 +600,10 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
   }
 
   const zip = new JSZip();
+  if (options.includeAttachments) {
+    zip.file("attachments/", "", { dir: true, date: zipEntryDate });
+  }
+
   const attachmentsFolder = options.includeAttachments ? zip.folder("attachments") : undefined;
   if (options.includeAttachments && !attachmentsFolder) {
     throw new Error("Unable to initialize attachments folder in export archive.");
@@ -596,6 +620,7 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
         attachmentsFolder,
         usedAttachmentNames,
         caseAttachmentIds,
+        zipEntryDate,
       })
     )
   );
@@ -665,10 +690,10 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
     }),
   });
 
-  zip.file("case-summary.txt", buildCaseSummaryText(options.caseFile, exportedAt, options, selectedItems.length, exportedAttachmentCount));
-  zip.file("timeline.md", buildTimelineMarkdown(options.caseFile, timelineEvents));
-  zip.file("timeline.csv", buildTimelineCsv(selectedItems));
-  zip.file(manifestRef, JSON.stringify(manifest, null, 2));
+  zip.file("case-summary.txt", buildCaseSummaryText(options.caseFile, exportedAt, options, selectedItems.length, exportedAttachmentCount), { date: zipEntryDate });
+  zip.file("timeline.md", buildTimelineMarkdown(options.caseFile, timelineEvents), { date: zipEntryDate });
+  zip.file("timeline.csv", buildTimelineCsv(selectedItems), { date: zipEntryDate });
+  zip.file(manifestRef, JSON.stringify(manifest, null, 2), { date: zipEntryDate });
   zip.file(
     "FINGERPRINT.txt",
     buildExportFingerprintText({
@@ -676,12 +701,13 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
       exportedAt,
       proofManifestFile: "proof-vault-evidence.json",
       manifestSeal: proofManifest.integritySeal,
-    })
+    }),
+    { date: zipEntryDate }
   );
-  zip.file("proof-vault-evidence.json", JSON.stringify(proofManifest, null, 2));
+  zip.file("proof-vault-evidence.json", JSON.stringify(proofManifest, null, 2), { date: zipEntryDate });
 
   if (options.includeMetadataAppendix) {
-    zip.file("metadata-appendix.md", generateCaseReportMarkdown(options.caseFile, timelineEvents, evidenceMeta));
+    zip.file("metadata-appendix.md", generateCaseReportMarkdown(options.caseFile, timelineEvents, evidenceMeta), { date: zipEntryDate });
 
     if (caseLedger.length > 0) {
       zip.file(
@@ -695,12 +721,13 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
           },
           null,
           2
-        )
+        ),
+        { date: zipEntryDate }
       );
     }
   }
 
-  const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+  const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", platform: "DOS" });
   downloadBlobFile(archiveRef, zipBlob);
 
   const bundle: ExportBundle = {

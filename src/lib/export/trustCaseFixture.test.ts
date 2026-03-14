@@ -558,7 +558,7 @@ describe("trust case fixture generator", () => {
       `- Generated at: ${expectations.build.generatedAt}`,
       `- Node runtime: ${expectations.build.runtime.node}`,
       "- Browser/runtime assumptions: Web Crypto, Blob, File, and JSON ZIP handling are available and behave consistently with the current build.",
-      "- Environment sensitivity: export filenames, proof manifests, backup envelopes, and checksums are pinned by a fixed Date shim plus deterministic random bytes in the generator harness.",
+      "- Environment sensitivity: export filenames, proof manifests, backup envelopes, archive entry metadata, and checksums are pinned by a fixed Date shim plus deterministic random bytes in the generator harness.",
       "",
     ].join("\n");
 
