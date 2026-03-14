@@ -9,6 +9,7 @@ import { ExportPreflightActions } from "./exports/ExportPreflightActions";
 import { ExportPresetPicker } from "./exports/ExportPresetPicker";
 import { ExportPreviewPanel } from "./exports/ExportPreviewPanel";
 import { ManifestSnapshotPanel } from "./exports/ManifestSnapshotPanel";
+import { VerifierResultsPanel } from "./exports/VerifierResultsPanel";
 
 export function Exports() {
   const {
@@ -35,11 +36,18 @@ export function Exports() {
     attachmentCandidates,
     previewItems,
     manifestPreview,
+    proofManifestPreview,
+    verifyingProof,
+    proofVerification,
+    verificationReport,
     handleGenerateExport,
     resetToDefaults,
     applyPreset,
     handleCopySummary,
     handleDownloadManifestPreview,
+    handleVerifyProofManifest,
+    handleDownloadVerificationReport,
+    handlePrintVerificationCertificate,
     load,
   } = useExportBuilder();
 
@@ -85,10 +93,20 @@ export function Exports() {
             onApplyPreset={applyPreset}
           />
           <ManifestSnapshotPanel manifest={manifestPreview} />
+          <VerifierResultsPanel
+            manifest={proofManifestPreview}
+            verification={proofVerification}
+            verificationReport={verificationReport}
+            verifying={verifyingProof}
+            onDownloadReport={handleDownloadVerificationReport}
+            onPrintCertificate={handlePrintVerificationCertificate}
+          />
           <ExportPreflightActions
             previewActionMessage={previewActionMessage}
             onCopySummary={handleCopySummary}
             onDownloadManifestPreview={handleDownloadManifestPreview}
+            onVerifyProofManifest={handleVerifyProofManifest}
+            verifyingProof={verifyingProof}
           />
           <ExportPacketForm
             cases={cases}

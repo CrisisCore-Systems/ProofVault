@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",
+    "test:trust-case": "vitest run src/lib/export/trustCaseFixture.test.ts",
+    "check:trust-case": "node scripts/check-trust-case.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

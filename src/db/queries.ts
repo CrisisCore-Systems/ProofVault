@@ -6,6 +6,8 @@ import {
   encryptCaseFileForStorage,
   encryptEvidenceItemForStorage,
 } from "../features/security/storage";
+import { decryptAttachmentRecord } from "../features/vault/attachmentCrypto";
+import { getSessionKey } from "../features/security/session";
 
 async function hydrateCaseFile(caseFile: CaseFile | undefined): Promise<CaseFile | undefined> {
   if (!caseFile) {
@@ -21,6 +23,16 @@ async function hydrateEvidenceItem(evidenceItem: EvidenceItem | undefined): Prom
   }
 
   return decryptEvidenceItemFromStorage(evidenceItem);
+}
+
+async function hydrateAttachmentRecord(
+  attachmentRecord: AttachmentRecord | undefined
+): Promise<AttachmentRecord | undefined> {
+  if (!attachmentRecord) {
+    return undefined;
+  }
+
+  return decryptAttachmentRecord(attachmentRecord, getSessionKey());
 }
 
 export async function listCases(): Promise<CaseFile[]> {
@@ -142,10 +154,22 @@ export async function getAttachmentRecordById(attachmentId: string): Promise<Att
   return db.attachments.get(attachmentId);
 }
 
+export async function getHydratedAttachmentRecordById(
+  attachmentId: string
+): Promise<AttachmentRecord | undefined> {
+  return hydrateAttachmentRecord(await db.attachments.get(attachmentId));
+}
+
 export async function getAttachmentByEvidenceItemId(
   evidenceItemId: string
 ): Promise<AttachmentRecord | undefined> {
   return db.attachments.where("evidenceItemId").equals(evidenceItemId).first();
+}
+
+export async function getHydratedAttachmentByEvidenceItemId(
+  evidenceItemId: string
+): Promise<AttachmentRecord | undefined> {
+  return hydrateAttachmentRecord(await db.attachments.where("evidenceItemId").equals(evidenceItemId).first());
 }
 
 export async function getEvidenceItemByAttachmentId(

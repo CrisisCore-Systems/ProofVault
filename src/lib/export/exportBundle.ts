@@ -1,7 +1,7 @@
 import JSZip from "jszip";
 import type { CaseFile, EvidenceItem, ExportBundle } from "../../domain/types";
 import {
-  getAttachmentByEvidenceItemId,
+  getHydratedAttachmentByEvidenceItemId,
   listLedgerEntries,
   upsertExportBundle,
 } from "../../db/queries";
@@ -12,6 +12,8 @@ import { formatDisplayDateTime } from "../dates/format";
 import { downloadBlobFile } from "../utils/download";
 import { bakeRedactedImage } from "../utils/redactionBake";
 import { generateCaseReportMarkdown, type CaseReportEvidenceMeta } from "./caseReport";
+import { shortFingerprint } from "./integrityFingerprints";
+import { buildProofVaultEvidenceManifest, createProofVaultRedactionPolicy } from "./proofVault";
 
 export type ExportPacketOptions = {
   caseFile: CaseFile;
@@ -328,6 +330,28 @@ function buildCaseSummaryText(
   ].join("\n");
 }
 
+function buildExportFingerprintText(input: {
+  caseFile: CaseFile;
+  exportedAt: string;
+  proofManifestFile: string;
+  manifestSeal: string;
+}): string {
+  return [
+    "ProofVault Export Fingerprint",
+    "",
+    `Case: ${input.caseFile.title}`,
+    `Case ID: ${input.caseFile.id}`,
+    `Exported At: ${formatDisplayDateTime(input.exportedAt)}`,
+    `Proof Manifest: ${input.proofManifestFile}`,
+    "",
+    `Manifest Fingerprint: ${shortFingerprint(input.manifestSeal)}`,
+    `Manifest Seal SHA-256: ${input.manifestSeal}`,
+    "",
+    "Use the manifest fingerprint as a spoken cross-check before opening the app, PDF, or JSON report.",
+    "After verification, the generated report will include its own report checksum for a second cross-check.",
+  ].join("\n");
+}
+
 function buildTimelineMarkdown(caseFile: CaseFile, timelineEvents: TimelineEvent[]): string {
   if (timelineEvents.length === 0) {
     return ["# Timeline", "", `Case: ${caseFile.title}`, "", "No timeline events included."].join("\n");
@@ -478,7 +502,7 @@ async function processExportItem({
     };
   }
 
-  const attachment = await getAttachmentByEvidenceItemId(item.id);
+  const attachment = await getHydratedAttachmentByEvidenceItemId(item.id);
   if (!attachment) {
     return {
       evidenceMeta: baseMeta,
@@ -523,7 +547,7 @@ async function processExportItem({
   const outputName = isRedactedDerivative ? addSuffixBeforeExtension(originalName, "_redacted") : originalName;
   const finalName = withUniqueName(outputName, usedAttachmentNames);
 
-  attachmentsFolder?.file(finalName, outputBlob);
+  attachmentsFolder?.file(finalName, await outputBlob.arrayBuffer());
 
   return {
     evidenceMeta: {
@@ -621,16 +645,40 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
       timelineMarkdown: "timeline.md",
       timelineCsv: "timeline.csv",
       caseSummary: "case-summary.txt",
+      fingerprint: "FINGERPRINT.txt",
+      evidenceProof: "proof-vault-evidence.json",
       metadataAppendix: options.includeMetadataAppendix ? "metadata-appendix.md" : null,
       ledgerAudit: options.includeMetadataAppendix && caseLedger.length > 0 ? "ledger-audit.json" : null,
     },
     items: manifestItems,
   };
 
+  const proofManifest = await buildProofVaultEvidenceManifest({
+    caseFile: options.caseFile,
+    items: selectedItems,
+    exportTimestamp: exportedAt,
+    outputFormat: "zip",
+    redactionPolicy: createProofVaultRedactionPolicy({
+      mode: options.mode,
+      includeAttachments: options.includeAttachments,
+      includeMetadataAppendix: options.includeMetadataAppendix,
+    }),
+  });
+
   zip.file("case-summary.txt", buildCaseSummaryText(options.caseFile, exportedAt, options, selectedItems.length, exportedAttachmentCount));
   zip.file("timeline.md", buildTimelineMarkdown(options.caseFile, timelineEvents));
   zip.file("timeline.csv", buildTimelineCsv(selectedItems));
   zip.file(manifestRef, JSON.stringify(manifest, null, 2));
+  zip.file(
+    "FINGERPRINT.txt",
+    buildExportFingerprintText({
+      caseFile: options.caseFile,
+      exportedAt,
+      proofManifestFile: "proof-vault-evidence.json",
+      manifestSeal: proofManifest.integritySeal,
+    })
+  );
+  zip.file("proof-vault-evidence.json", JSON.stringify(proofManifest, null, 2));
 
   if (options.includeMetadataAppendix) {
     zip.file("metadata-appendix.md", generateCaseReportMarkdown(options.caseFile, timelineEvents, evidenceMeta));
@@ -676,6 +724,8 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
       attachmentCount: exportedAttachmentCount,
       includeAttachments: options.includeAttachments,
       includeMetadataAppendix: options.includeMetadataAppendix,
+      proofRecordCount: proofManifest.recordCount,
+      proofIntegritySeal: proofManifest.integritySeal,
       startDate: options.startDate ?? null,
       endDate: options.endDate ?? null,
     },

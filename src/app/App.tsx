@@ -6,6 +6,9 @@ const Inbox = lazy(() => import("./routes/Inbox").then((module) => ({ default: m
 const Cases = lazy(() => import("./routes/Cases").then((module) => ({ default: module.Cases })));
 const Timeline = lazy(() => import("./routes/Timeline").then((module) => ({ default: module.Timeline })));
 const Exports = lazy(() => import("./routes/Exports").then((module) => ({ default: module.Exports })));
+const StandaloneVerifier = lazy(() =>
+  import("./routes/StandaloneVerifier").then((module) => ({ default: module.StandaloneVerifier }))
+);
 const NewIncident = lazy(() =>
   import("./routes/NewIncident").then((module) => ({ default: module.NewIncident }))
 );
@@ -35,6 +38,7 @@ export function App() {
           <Route path="/cases" element={<Cases />} />
           <Route path="/timeline" element={<Timeline />} />
           <Route path="/exports" element={<Exports />} />
+          <Route path="/verifier" element={<StandaloneVerifier />} />
           <Route path="/security" element={<Security />} />
           <Route path="/incidents/new" element={<NewIncident />} />
           <Route path="/attachments/new" element={<NewAttachment />} />

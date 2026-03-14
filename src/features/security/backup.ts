@@ -3,11 +3,13 @@ import { db } from "../../db/index";
 import { sha256HexFromText } from "../../lib/hashing/sha256";
 import { downloadBlobFile } from "../../lib/utils/download";
 import {
-  type StoredSecurityConfig,
+  type SecurityConfig,
+  deriveVerifiedKeyFromConfig,
   getStoredSecurityConfigForBackup,
   restoreSecurityConfigFromBackup,
 } from "./session";
 import { createRandomBase64, decryptJson, deriveAesKeyFromPassphrase, encryptJson } from "./crypto";
+import { decryptCaseFileFromStorageWithKey, decryptEvidenceItemFromStorageWithKey } from "./storage";
 
 type SerializedAttachmentRecord = Omit<AttachmentRecord, "blob" | "encryptionIv"> & {
   blobBase64: string;
@@ -18,7 +20,7 @@ type VaultBackupSnapshot = {
   format: "proofvault-backup";
   version: 1;
   exportedAt: string;
-  securityConfig: StoredSecurityConfig;
+  securityConfig: SecurityConfig;
   tables: {
     cases: CaseFile[];
     evidenceItems: EvidenceItem[];
@@ -77,6 +79,16 @@ export type VaultBackupPreview = {
     includeAttachments: boolean;
     includeExportBundles: boolean;
   };
+};
+
+export type BackupVerificationSnapshot = {
+  snapshotSha256: string;
+  exportedAt: string;
+  cases: CaseFile[];
+  evidenceItems: EvidenceItem[];
+  exportBundles: ExportBundle[];
+  attachments: Array<Omit<AttachmentRecord, "blob">>;
+  ledger: LedgerEntry[];
 };
 
 export type VaultRestoreOptions = {
@@ -208,6 +220,40 @@ async function decryptVerifiedSnapshot(file: File, backupPassphrase: string): Pr
   }
 
   return { envelope, snapshot };
+}
+
+export async function readVerificationSnapshotFromBackup(
+  file: File,
+  backupPassphrase: string,
+  vaultPassphrase: string
+): Promise<BackupVerificationSnapshot> {
+  const { envelope, snapshot } = await decryptVerifiedSnapshot(file, backupPassphrase);
+  const vaultKey = await deriveVerifiedKeyFromConfig(vaultPassphrase, snapshot.securityConfig);
+
+  const [cases, evidenceItems] = await Promise.all([
+    Promise.all(snapshot.tables.cases.map((caseFile) => decryptCaseFileFromStorageWithKey(caseFile, vaultKey))),
+    Promise.all(
+      snapshot.tables.evidenceItems.map((evidenceItem) => decryptEvidenceItemFromStorageWithKey(evidenceItem, vaultKey))
+    ),
+  ]);
+
+  return {
+    snapshotSha256: envelope.snapshotSha256,
+    exportedAt: snapshot.exportedAt,
+    cases,
+    evidenceItems,
+    exportBundles: snapshot.tables.exportBundles,
+    attachments: snapshot.tables.attachments.map((attachment) => ({
+      id: attachment.id,
+      evidenceItemId: attachment.evidenceItemId,
+      sizeBytes: attachment.sizeBytes,
+      mimeType: attachment.mimeType,
+      originalFilename: attachment.originalFilename,
+      createdAt: attachment.createdAt,
+      updatedAt: attachment.updatedAt,
+    })),
+    ledger: snapshot.tables.ledger,
+  };
 }
 
 export async function previewEncryptedBackup(

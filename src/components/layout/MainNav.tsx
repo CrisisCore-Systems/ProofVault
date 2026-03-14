@@ -5,6 +5,7 @@ const navItems = [
   { to: "/cases", label: "Cases" },
   { to: "/timeline", label: "Timeline" },
   { to: "/exports", label: "Exports" },
+  { to: "/verifier", label: "Verifier" },
   { to: "/security", label: "Security" },
 ];
 

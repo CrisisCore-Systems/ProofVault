@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import type { CaseFile, EvidenceItem } from "../../domain/types";
 import {
   getAttachmentByEvidenceItemId,
+  getHydratedAttachmentByEvidenceItemId,
   listCases,
   listEvidenceItemsForCase,
   updateCaseLastVerifiedAt,
@@ -15,6 +16,7 @@ import { verifyCaseEvidenceIntegrity } from "../evidence/integrity";
 import { saveAttachment } from "../evidence/attachmentActions";
 import { appendLedgerEvent, getLedgerHealth, type LedgerHealth } from "../ledger/chain";
 import type { CaseExportState, CaseVerificationState } from "../../app/routes/cases/CaseCard";
+import { getSessionKey } from "../security/session";
 
 export type CaseWithPreview = {
   caseFile: CaseFile;
@@ -224,7 +226,7 @@ export function useCasesOverview() {
 
     try {
       const report = await verifyCaseEvidenceIntegrity(caseItems, (evidenceItem) =>
-        getAttachmentByEvidenceItemId(evidenceItem.id),
+        getHydratedAttachmentByEvidenceItemId(evidenceItem.id),
         caseFile.lastVerifiedAt
       );
 
@@ -277,6 +279,12 @@ export function useCasesOverview() {
   };
 
   const addAttachmentToCase = async (caseFile: CaseFile, file: File) => {
+    const sessionKey = getSessionKey();
+
+    if (!sessionKey) {
+      throw new Error("Vault is locked. Unlock the vault before importing attachments.");
+    }
+
     await saveAttachment(
       {
         title: file.name.replace(/\.[^/.]+$/, "") || file.name,
@@ -284,7 +292,8 @@ export function useCasesOverview() {
         caseId: caseFile.id,
         recordedAt: localDateTimeNowValue(),
       },
-      file
+      file,
+      sessionKey
     );
   };
 

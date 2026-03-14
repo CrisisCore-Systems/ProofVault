@@ -1,11 +1,30 @@
+import JSZip from "jszip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CaseFile, EvidenceItem } from "../../domain/types";
+import { appendLedgerEvent } from "../../features/ledger/chain";
+import { listLedgerEntries, upsertExportBundle } from "../../db/queries";
+import { downloadBlobFile } from "../utils/download";
 import {
   buildExportPreview,
   buildExportPreviewManifest,
   buildExportPreviewSummary,
+  generateExportPacket,
   type ExportPacketOptions,
 } from "./exportBundle";
+
+vi.mock("../../db/queries", () => ({
+  getHydratedAttachmentByEvidenceItemId: vi.fn(),
+  listLedgerEntries: vi.fn(),
+  upsertExportBundle: vi.fn(),
+}));
+
+vi.mock("../../features/ledger/chain", () => ({
+  appendLedgerEvent: vi.fn(),
+}));
+
+vi.mock("../utils/download", () => ({
+  downloadBlobFile: vi.fn(),
+}));
 
 const baseCase: CaseFile = {
   id: "case-1",
@@ -59,6 +78,10 @@ describe("export preview helpers", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-09T12:00:00.000Z"));
+    vi.mocked(listLedgerEntries).mockResolvedValue([]);
+    vi.mocked(upsertExportBundle).mockResolvedValue(undefined);
+    vi.mocked(appendLedgerEvent).mockResolvedValue(undefined);
+    vi.mocked(downloadBlobFile).mockReset();
   });
 
   it("builds preview items in timeline order with inclusion and attachment reasoning", () => {
@@ -211,5 +234,56 @@ describe("export preview helpers", () => {
     expect(summary).toContain("- Door photo (photo) — Attachments excluded by current export settings.");
     expect(summary).toContain("Excluded:");
     expect(summary).toContain("- Private draft (note) — Item is currently excluded from export.");
+  });
+
+  it("includes a root fingerprint dog-tag file in generated export archives", async () => {
+    vi.useRealTimers();
+
+    const items = [
+      createItem({
+        id: "note-1",
+        title: "Witness note",
+        description: "Observed damage near the front entrance.",
+        tags: ["witness", "entryway"],
+        peopleInvolved: ["A. Rivera"],
+        recordedAt: "2026-03-08T15:30:00.000Z",
+      }),
+    ];
+
+    await generateExportPacket(
+      createOptions({
+        items,
+        mode: "redacted",
+        includeAttachments: false,
+        includeMetadataAppendix: false,
+      })
+    );
+
+    expect(downloadBlobFile).toHaveBeenCalledTimes(1);
+    const [, archiveBlob] = vi.mocked(downloadBlobFile).mock.calls[0];
+    const archiveBuffer = await archiveBlob.arrayBuffer();
+    const archive = await JSZip.loadAsync(archiveBuffer);
+    const fingerprintFile = archive.file("FINGERPRINT.txt");
+    const proofFile = archive.file("proof-vault-evidence.json");
+    const manifestFileName = Object.keys(archive.files).find(
+      (fileName) => fileName.startsWith("manifest-") && fileName.endsWith(".json")
+    );
+    const manifestFile = archive.file(manifestFileName);
+
+    expect(fingerprintFile).toBeTruthy();
+    expect(proofFile).toBeTruthy();
+    expect(manifestFile).toBeTruthy();
+
+    const fingerprintText = await fingerprintFile!.async("string");
+    const proofManifest = JSON.parse(await proofFile!.async("string")) as { integritySeal: string };
+    const exportManifest = JSON.parse(await manifestFile!.async("string")) as { files: Record<string, string> };
+
+    expect(fingerprintText).toContain("ProofVault Export Fingerprint");
+    expect(fingerprintText).toContain(`Case: ${baseCase.title}`);
+    expect(fingerprintText).toContain("Proof Manifest: proof-vault-evidence.json");
+    expect(fingerprintText).toContain(`Manifest Seal SHA-256: ${proofManifest.integritySeal}`);
+    expect(fingerprintText).toMatch(/Manifest Fingerprint: [A-F0-9]{4}(?:-[A-F0-9]{4}){3}/);
+    expect(exportManifest.files.fingerprint).toBe("FINGERPRINT.txt");
+    expect(exportManifest.files.evidenceProof).toBe("proof-vault-evidence.json");
   });
 });

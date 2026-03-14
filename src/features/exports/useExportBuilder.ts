@@ -8,6 +8,19 @@ import {
   type ExportPreviewManifest,
   type ExportPreviewItem,
 } from "../../lib/export/exportBundle";
+import { buildProofVaultEvidenceManifest, createProofVaultRedactionPolicy } from "../../lib/export/proofVault";
+import {
+  verifyProofVaultEvidenceManifest,
+  type ProofVaultManifestVerificationResult,
+} from "../../lib/export/proofVerifier";
+import {
+  buildVerificationReport,
+  buildVerificationReportFileNameFromMetadata,
+  type VerificationReport,
+} from "../../lib/export/verificationReport";
+import { printClinicalVerificationCertificate } from "../../lib/export/clinicalReportPdf";
+import type { ProofVaultEvidenceManifest } from "../../types/proof-vault";
+import { downloadTextFile } from "../../lib/utils/download";
 import { resolveTimelineTimestamp } from "../cases/timeline";
 import { copyExportPreviewSummary, downloadExportPreviewManifest } from "./preflight";
 import {
@@ -59,6 +72,10 @@ export function useExportBuilder() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
   const [previewActionMessage, setPreviewActionMessage] = useState<string | null>(null);
+  const [proofManifestPreview, setProofManifestPreview] = useState<ProofVaultEvidenceManifest | null>(null);
+  const [verifyingProof, setVerifyingProof] = useState(false);
+  const [proofVerification, setProofVerification] = useState<ProofVaultManifestVerificationResult | null>(null);
+  const [verificationReport, setVerificationReport] = useState<VerificationReport | null>(null);
 
   const load = async () => {
     const [bundleData, caseData] = await Promise.all([listExportBundles(), listCases()]);
@@ -156,6 +173,50 @@ export function useExportBuilder() {
     [caseItems, endDate, includeAttachments, includeMetadataAppendix, mode, selectedCase, startDate]
   );
 
+  useEffect(() => {
+    if (!selectedCase) {
+      setProofManifestPreview(null);
+      setProofVerification(null);
+      setVerificationReport(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const buildPreview = async () => {
+      const exportTimestamp = new Date().toISOString();
+      const selectedItems = caseItems
+        .filter((item) => item.includeInExport && isWithinDateRange(item, startDate, endDate))
+        .sort((left, right) => Date.parse(resolveTimelineTimestamp(left)) - Date.parse(resolveTimelineTimestamp(right)));
+
+      const manifest = await buildProofVaultEvidenceManifest({
+        caseFile: selectedCase,
+        items: selectedItems,
+        exportTimestamp,
+        outputFormat: "zip",
+        redactionPolicy: createProofVaultRedactionPolicy({
+          mode,
+          includeAttachments,
+          includeMetadataAppendix,
+        }),
+      });
+
+      if (cancelled) {
+        return;
+      }
+
+      setProofManifestPreview(manifest);
+      setProofVerification(null);
+      setVerificationReport(null);
+    };
+
+    void buildPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [caseItems, endDate, includeAttachments, includeMetadataAppendix, mode, selectedCase, startDate]);
+
   const handleGenerateExport: ComponentProps<"form">["onSubmit"] = (event) => {
     event.preventDefault();
     setExportError(null);
@@ -205,6 +266,8 @@ export function useExportBuilder() {
     setExportError(null);
     setExportSuccess(null);
     setPreviewActionMessage(null);
+    setProofVerification(null);
+    setVerificationReport(null);
   };
 
   const applyPreset = (preset: ExportPresetSelection) => {
@@ -214,6 +277,8 @@ export function useExportBuilder() {
     setExportError(null);
     setExportSuccess(null);
     setPreviewActionMessage(null);
+    setProofVerification(null);
+    setVerificationReport(null);
   };
 
   const handleCopySummary = async () => {
@@ -260,6 +325,101 @@ export function useExportBuilder() {
     setPreviewActionMessage(result.message);
   };
 
+  const handleVerifyProofManifest = () => {
+    setExportError(null);
+    setExportSuccess(null);
+
+    if (!selectedCase || !proofManifestPreview) {
+      setPreviewActionMessage("Choose a case to verify the proof manifest preview.");
+      return;
+    }
+
+    const run = async () => {
+      setVerifyingProof(true);
+      setPreviewActionMessage(null);
+
+      try {
+        const result = await verifyProofVaultEvidenceManifest({
+          manifest: proofManifestPreview,
+          caseFile: selectedCase,
+          items: caseItems,
+        });
+        const report = await buildVerificationReport({
+          manifest: proofManifestPreview,
+          caseTitle: selectedCase.title,
+          verification: result,
+          verificationSource: "live-vault",
+        });
+
+        setProofVerification(result);
+        setVerificationReport(report);
+        setPreviewActionMessage(
+          result.status === "verified"
+            ? "Proof manifest verified against the current vault snapshot."
+            : "Proof manifest check found integrity issues."
+        );
+      } finally {
+        setVerifyingProof(false);
+      }
+    };
+
+    void run();
+  };
+
+  const handleDownloadVerificationReport = () => {
+    setExportError(null);
+    setExportSuccess(null);
+
+    if (!proofManifestPreview || !proofVerification) {
+      setPreviewActionMessage("Run the proof verifier before downloading a verification report.");
+      return;
+    }
+
+    const run = async () => {
+      const report =
+        verificationReport ??
+        (await buildVerificationReport({
+          manifest: proofManifestPreview,
+          caseTitle: selectedCase?.title,
+          verification: proofVerification,
+          verificationSource: "live-vault",
+        }));
+      const fileName = buildVerificationReportFileNameFromMetadata({
+        caseId: report.manifest.caseId,
+        caseTitle: report.manifest.caseTitle,
+        exportedAt: report.manifest.exportedAt,
+      });
+      downloadTextFile(fileName, JSON.stringify(report, null, 2), "application/json;charset=utf-8");
+
+      setPreviewActionMessage(`Verification report downloaded: ${fileName}`);
+    };
+
+    void run();
+  };
+
+  const handlePrintVerificationCertificate = () => {
+    if (!proofManifestPreview || !proofVerification) {
+      setPreviewActionMessage("Run the proof verifier before printing a certificate.");
+      return;
+    }
+
+    const run = async () => {
+      const report =
+        verificationReport ??
+        (await buildVerificationReport({
+          manifest: proofManifestPreview,
+          caseTitle: selectedCase?.title,
+          verification: proofVerification,
+          verificationSource: "live-vault",
+        }));
+
+      printClinicalVerificationCertificate(report);
+      setPreviewActionMessage("Clinical verification certificate opened for printing.");
+    };
+
+    void run();
+  };
+
   return {
     restoredFromStorage,
     cases,
@@ -284,11 +444,18 @@ export function useExportBuilder() {
     attachmentCandidates,
     previewItems,
     manifestPreview,
+    proofManifestPreview,
+    verifyingProof,
+    proofVerification,
+    verificationReport,
     handleGenerateExport,
     resetToDefaults,
     applyPreset,
     handleCopySummary,
     handleDownloadManifestPreview,
+    handleVerifyProofManifest,
+    handleDownloadVerificationReport,
+    handlePrintVerificationCertificate,
     load,
   };
 }

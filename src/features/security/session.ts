@@ -14,7 +14,7 @@ const DEFAULT_SECURITY_PREFERENCES: SecurityPreferences = {
   lockOnHidden: true,
 };
 
-type SecurityConfig = {
+export type SecurityConfig = {
   version: 1;
   salt: string;
   verifier: {
@@ -25,8 +25,6 @@ type SecurityConfig = {
   };
   preferences?: SecurityPreferences;
 };
-
-export type StoredSecurityConfig = SecurityConfig;
 
 export type PreparedSessionConfig = {
   key: CryptoKey;
@@ -85,6 +83,14 @@ async function deriveVerifiedKey(passphrase: string): Promise<CryptoKey> {
     throw new Error("App lock has not been configured yet.");
   }
 
+  return deriveVerifiedKeyFromConfig(passphrase, config);
+}
+
+export async function deriveVerifiedKeyFromConfig(
+  passphrase: string,
+  config: Pick<SecurityConfig, "salt" | "verifier">
+): Promise<CryptoKey> {
+
   validatePassphrase(passphrase);
 
   const key = await deriveAesKeyFromPassphrase(passphrase, config.salt);
@@ -109,12 +115,16 @@ export function isSessionUnlocked(): boolean {
   return activeSessionKey !== null;
 }
 
+export function getSessionKey(): CryptoKey | null {
+  return activeSessionKey;
+}
+
 export function getSecurityPreferences(): SecurityPreferences {
   const config = readStoredConfig();
   return normalizePreferences(config?.preferences);
 }
 
-export function getStoredSecurityConfigForBackup(): StoredSecurityConfig {
+export function getStoredSecurityConfigForBackup(): SecurityConfig {
   const config = readStoredConfig();
 
   if (!config) {
@@ -127,7 +137,7 @@ export function getStoredSecurityConfigForBackup(): StoredSecurityConfig {
   };
 }
 
-export function restoreSecurityConfigFromBackup(config: StoredSecurityConfig): void {
+export function restoreSecurityConfigFromBackup(config: SecurityConfig): void {
   writeStoredConfig({
     ...config,
     preferences: normalizePreferences(config.preferences),

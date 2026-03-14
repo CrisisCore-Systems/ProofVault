@@ -157,3 +157,22 @@ proofvault/
 
 Most evidence systems assume people document harm from stable conditions.
 ProofVault is for when those conditions fail.
+
+## Trust Case
+
+ProofVault now includes a public trust dossier scaffold under [docs/trust-case/README.md](./docs/trust-case/README.md).
+
+The package is intended to become a named release artifact, not a drifting notes folder. It binds together:
+
+- system guarantees and non-guarantees
+- architecture-specific threat boundaries
+- a provisional PLS disclosure with withheld claims called out explicitly
+- an end-to-end verification walkthrough
+- known limitations and hardening priorities
+- a reproducibility fixture contract for exported proof artifacts
+
+Recommended publication label:
+
+`ProofVault Trust Case v1.0`
+
+The frozen specimen is continuously revalidated in CI through `.github/workflows/trust-case.yml` and the local `npm run check:trust-case` gate.

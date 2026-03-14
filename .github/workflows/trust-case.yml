@@ -1,0 +1,54 @@
+name: Trust Case
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  trust-case:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Revalidate trust-case specimen
+        run: npm run check:trust-case
+
+      - name: Capture trust-case diff
+        if: failure()
+        run: git diff -- docs/trust-case/demo > trust-case-demo.diff
+
+      - name: Capture trust-case status
+        if: failure()
+        run: git status --porcelain --untracked-files=all -- docs/trust-case/demo > trust-case-demo.status
+
+      - name: Upload trust-case expectation artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trust-case-expected-outputs
+          path: |
+            docs/trust-case/demo/EXPECTED_OUTPUTS.json
+            docs/trust-case/demo/SPECIMEN_BASELINE.md
+
+      - name: Upload trust-case drift diff
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trust-case-drift-diff
+          path: |
+            trust-case-demo.diff
+            trust-case-demo.status

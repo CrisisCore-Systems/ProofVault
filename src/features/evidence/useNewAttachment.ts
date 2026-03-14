@@ -1,5 +1,6 @@
 import { useEffect, useState, type ChangeEvent, type SyntheticEvent } from "react";
 import { getCasesForSelect } from "../../db/queries";
+import { getSessionKey } from "../security/session";
 import { saveAttachment } from "./attachmentActions";
 import {
   defaultAttachmentFormValues,
@@ -51,14 +52,21 @@ export function useNewAttachment(navigate: (to: string) => void) {
   };
 
   const persistAttachment = async () => {
+    const sessionKey = getSessionKey();
+
     if (!selectedFile) {
       setErrorMessage("Select a file to continue");
       return;
     }
 
+    if (!sessionKey) {
+      setErrorMessage("Vault is locked. Unlock the vault before importing attachments.");
+      return;
+    }
+
     setSaving(true);
     try {
-      await saveAttachment(values, selectedFile);
+      await saveAttachment(values, selectedFile, sessionKey);
       navigate("/inbox?saved=attachment");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save attachment");

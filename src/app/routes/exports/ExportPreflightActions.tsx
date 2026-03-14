@@ -2,12 +2,16 @@ type ExportPreflightActionsProps = {
   previewActionMessage: string | null;
   onCopySummary: () => Promise<void>;
   onDownloadManifestPreview: () => void;
+  onVerifyProofManifest: () => void;
+  verifyingProof: boolean;
 };
 
 export function ExportPreflightActions({
   previewActionMessage,
   onCopySummary,
   onDownloadManifestPreview,
+  onVerifyProofManifest,
+  verifyingProof,
 }: Readonly<ExportPreflightActionsProps>) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -24,6 +28,13 @@ export function ExportPreflightActions({
         className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-900"
       >
         Download Manifest Preview
+      </button>
+      <button
+        type="button"
+        onClick={onVerifyProofManifest}
+        className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-900"
+      >
+        {verifyingProof ? "Verifying Proof..." : "Verify Proof Manifest"}
       </button>
       {previewActionMessage ? <span className="text-xs text-zinc-400">{previewActionMessage}</span> : null}
     </div>

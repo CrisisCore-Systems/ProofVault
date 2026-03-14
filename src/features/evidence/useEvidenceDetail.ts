@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  getAttachmentByEvidenceItemId,
   getCaseById,
   getEvidenceItemById,
+  getHydratedAttachmentByEvidenceItemId,
   getLatestLedgerEntryForAttachment,
   listEvidenceItemsForCase,
   updateEvidenceControls,
@@ -20,7 +20,7 @@ export async function fetchEvidenceDetailView(evidenceId: string): Promise<Evide
     return null;
   }
 
-  const attachment = await getAttachmentByEvidenceItemId(evidence.id);
+  const attachment = await getHydratedAttachmentByEvidenceItemId(evidence.id);
   const caseFile = evidence.caseId ? await getCaseById(evidence.caseId) : undefined;
 
   let linkedIncident: EvidenceItem | undefined;

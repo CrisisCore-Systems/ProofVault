@@ -14,7 +14,7 @@ function toIsoFromLocalDateTime(value: string): string {
 export async function saveAttachment(
   values: AttachmentFormValues,
   selectedFile: File,
-  encryptionKey?: CryptoKey | null
+  encryptionKey: CryptoKey
 ): Promise<{ evidenceItemId: string; attachmentId: string }> {
   const result = validateAttachmentForm(values);
   if (!result.success) {
@@ -39,17 +39,8 @@ export async function saveAttachment(
   const attachmentId = crypto.randomUUID();
 
   const digest = await sha256HexFromBlob(selectedFile);
-
-  let storedBlob: Blob = selectedFile;
-  let encrypted: boolean | undefined;
-  let encryptionIv: Uint8Array | undefined;
-
-  if (encryptionKey) {
-    const result = await encryptBlob(selectedFile, encryptionKey);
-    storedBlob = new Blob([result.ciphertext]);
-    encrypted = true;
-    encryptionIv = result.iv;
-  }
+  const encryptedAttachment = await encryptBlob(selectedFile, encryptionKey);
+  const storedBlob = new Blob([encryptedAttachment.ciphertext]);
 
   const attachmentRecord: AttachmentRecord = {
     id: attachmentId,
@@ -60,8 +51,8 @@ export async function saveAttachment(
     originalFilename: selectedFile.name,
     createdAt: nowIso,
     updatedAt: nowIso,
-    encrypted,
-    encryptionIv,
+    encrypted: true,
+    encryptionIv: encryptedAttachment.iv,
   };
 
   const evidenceItem: EvidenceItem = {
@@ -98,7 +89,7 @@ export async function saveAttachment(
       originalFilename: selectedFile.name,
       mimeType: selectedFile.type,
       sizeBytes: selectedFile.size,
-      encrypted: !!encrypted,
+      encrypted: true,
     },
   });
 
