@@ -1,4 +1,4 @@
-# ProofVault Trust Case v1.0
+# ProofVault Trust Case
 
 This package is the public trust dossier for ProofVault as it exists today.
 
@@ -6,6 +6,7 @@ It is not a product vision deck and it is not a security marketing page. It is a
 
 ## Contents
 
+- [CASE_STUDY.md](./CASE_STUDY.md): public-facing narrative of how the trust case, specimen, drift enforcement, and release proof fit together.
 - [TRUST_CASE.md](./TRUST_CASE.md): system guarantees, trust boundaries, assumptions, and defensibility packet.
 - [THREAT_MODEL.md](./THREAT_MODEL.md): architecture-specific threats, abuse cases, and failure states.
 - [PLS_DISCLOSURE.md](./PLS_DISCLOSURE.md): self-assessment against Protective Legitimacy expectations, including withheld claims.
@@ -38,13 +39,19 @@ The gate regenerates the specimen, compares the checked-in files under `docs/tru
 
 ## Release stance
 
-This dossier should ship with a named release, not drift continuously with feature work.
+This dossier ships as a named release artifact, not a drifting notes folder.
 
-Recommended release label:
+Published public trust-case tags:
 
-`ProofVault Trust Case v1.0`
+- `proofvault-trust-case-v1.0`
+- `proofvault-trust-case-v1.0.1`
 
-Recommended publication gate:
+Current corrected hosted-green non-debug release:
+
+- tag: `proofvault-trust-case-v1.0.1`
+- commit: `dc5fbe9`
+
+Ongoing publication gate:
 
 1. Freeze the build under review.
 2. Generate the demo fixture from that exact build.

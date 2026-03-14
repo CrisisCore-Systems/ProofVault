@@ -160,19 +160,15 @@ ProofVault is for when those conditions fail.
 
 ## Trust Case
 
-ProofVault now includes a public trust dossier scaffold under [docs/trust-case/README.md](./docs/trust-case/README.md).
+ProofVault includes a release-bound trust case with a pinned specimen, reproducibility checks, and hosted-CI drift enforcement.
 
-The package is intended to become a named release artifact, not a drifting notes folder. It binds together:
+- Trust case dossier: [docs/trust-case/README.md](./docs/trust-case/README.md)
+- Pinned specimen: [docs/trust-case/demo/README.md](./docs/trust-case/demo/README.md)
+- Case study: [docs/trust-case/CASE_STUDY.md](./docs/trust-case/CASE_STUDY.md)
+- Public release tags:
+	- `proofvault-trust-case-v1.0`
+	- `proofvault-trust-case-v1.0.1`
 
-- system guarantees and non-guarantees
-- architecture-specific threat boundaries
-- a provisional PLS disclosure with withheld claims called out explicitly
-- an end-to-end verification walkthrough
-- known limitations and hardening priorities
-- a reproducibility fixture contract for exported proof artifacts
-
-Recommended publication label:
-
-`ProofVault Trust Case v1.0`
+The corrected hosted-green non-debug trust-case release is `proofvault-trust-case-v1.0.1`, tied to commit `dc5fbe9`.
 
 The frozen specimen is continuously revalidated in CI through `.github/workflows/trust-case.yml` and the local `npm run check:trust-case` gate.
