@@ -1,4 +1,14 @@
-import { format } from "date-fns";
+type DisplayDateTimeMode = "local" | "utc";
+
+let displayDateTimeMode: DisplayDateTimeMode = "local";
+
+function padDatePart(value: number): string {
+  return value.toString().padStart(2, "0");
+}
+
+export function setDisplayDateTimeMode(mode: DisplayDateTimeMode): void {
+  displayDateTimeMode = mode;
+}
 
 export function formatDisplayDateTime(isoDateTime: string): string {
   const parsedDate = new Date(isoDateTime);
@@ -6,7 +16,13 @@ export function formatDisplayDateTime(isoDateTime: string): string {
     return isoDateTime;
   }
 
-  return format(parsedDate, "yyyy-MM-dd HH:mm");
+  const year = displayDateTimeMode === "utc" ? parsedDate.getUTCFullYear() : parsedDate.getFullYear();
+  const month = displayDateTimeMode === "utc" ? parsedDate.getUTCMonth() + 1 : parsedDate.getMonth() + 1;
+  const day = displayDateTimeMode === "utc" ? parsedDate.getUTCDate() : parsedDate.getDate();
+  const hours = displayDateTimeMode === "utc" ? parsedDate.getUTCHours() : parsedDate.getHours();
+  const minutes = displayDateTimeMode === "utc" ? parsedDate.getUTCMinutes() : parsedDate.getMinutes();
+
+  return `${year}-${padDatePart(month)}-${padDatePart(day)} ${padDatePart(hours)}:${padDatePart(minutes)}`;
 }
 
 /**

@@ -22,6 +22,7 @@ import {
 import { appendLedgerEvent } from "../../features/ledger/chain";
 import { downloadBlobFile } from "../utils/download";
 import { sha256HexFromBlob } from "../hashing/sha256";
+import { setDisplayDateTimeMode } from "../dates/format";
 import { generateClinicalVerificationCertificateHtml } from "./clinicalReportPdf";
 import { generateExportPacket } from "./exportBundle";
 import { shortFingerprint } from "./integrityFingerprints";
@@ -190,6 +191,7 @@ describe("trust case fixture generator", () => {
       value: NativeDate,
       configurable: true,
     });
+    setDisplayDateTimeMode("local");
     vi.restoreAllMocks();
   });
 
@@ -210,6 +212,7 @@ describe("trust case fixture generator", () => {
       value: FixedDate,
       configurable: true,
     });
+    setDisplayDateTimeMode("utc");
 
     const localStorageMock = createLocalStorageMock();
     Object.defineProperty(globalThis, "localStorage", {
