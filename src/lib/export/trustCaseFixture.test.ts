@@ -183,6 +183,36 @@ async function resolvePinnedGitRef(repoRoot: string): Promise<string> {
   return getGitRef(repoRoot);
 }
 
+async function resolvePinnedNodeRuntime(repoRoot: string): Promise<string> {
+  const requestedNodeRuntime = process.env.TRUST_CASE_NODE_RUNTIME?.trim();
+
+  if (requestedNodeRuntime) {
+    return requestedNodeRuntime;
+  }
+
+  try {
+    const expectationText = await readFile(
+      path.join(repoRoot, "docs", "trust-case", "demo", "EXPECTED_OUTPUTS.json"),
+      "utf8"
+    );
+    const parsed = JSON.parse(expectationText) as {
+      build?: {
+        runtime?: {
+          node?: unknown;
+        };
+      };
+    };
+
+    if (typeof parsed.build?.runtime?.node === "string" && parsed.build.runtime.node.trim().length > 0) {
+      return parsed.build.runtime.node;
+    }
+  } catch {
+    // Fall back to the current process version during initial specimen generation.
+  }
+
+  return process.version;
+}
+
 const NativeDate = Date;
 
 describe("trust case fixture generator", () => {
@@ -252,6 +282,7 @@ describe("trust case fixture generator", () => {
     const demoDir = getSpecimenOutputDir(repoRoot);
 
     const pinnedGitRef = await resolvePinnedGitRef(repoRoot);
+    const pinnedNodeRuntime = await resolvePinnedNodeRuntime(repoRoot);
 
     const attachmentBlob = new Blob(
       [
@@ -502,7 +533,7 @@ describe("trust case fixture generator", () => {
         gitRef: pinnedGitRef,
         generatedAt: "2026-03-13T16:20:00.000Z",
         runtime: {
-          node: process.version,
+          node: pinnedNodeRuntime,
           webCrypto: true,
           deterministicHarness: true,
         },
