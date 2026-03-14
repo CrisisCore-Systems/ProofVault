@@ -133,6 +133,16 @@ function getRepoRoot(): string {
   return process.cwd();
 }
 
+function getSpecimenOutputDir(repoRoot: string): string {
+  const override = process.env.TRUST_CASE_OUTPUT_DIR?.trim();
+
+  if (override) {
+    return path.resolve(repoRoot, override);
+  }
+
+  return path.join(repoRoot, "docs", "trust-case", "demo");
+}
+
 function getGitRef(repoRoot: string): string {
   try {
     return execFileSync("git", ["rev-parse", "HEAD"], {
@@ -236,7 +246,7 @@ describe("trust case fixture generator", () => {
     const vaultPassphrase = ["vault", "passphrase", "fixture"].join("-");
     const backupPassphrase = ["backup", "passphrase", "fixture"].join("-");
     const repoRoot = getRepoRoot();
-    const demoDir = path.join(repoRoot, "docs", "trust-case", "demo");
+    const demoDir = getSpecimenOutputDir(repoRoot);
 
     const pinnedGitRef = await resolvePinnedGitRef(repoRoot);
 

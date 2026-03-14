@@ -25,15 +25,10 @@ jobs:
         run: npm ci
 
       - name: Revalidate trust-case specimen
+        env:
+          TRUST_CASE_DIFF_PATH: trust-case-demo.diff
+          TRUST_CASE_STATUS_PATH: trust-case-demo.status
         run: npm run check:trust-case
-
-      - name: Capture trust-case diff
-        if: failure()
-        run: git diff -- docs/trust-case/demo > trust-case-demo.diff
-
-      - name: Capture trust-case status
-        if: failure()
-        run: git status --porcelain --untracked-files=all -- docs/trust-case/demo > trust-case-demo.status
 
       - name: Upload trust-case expectation artifact
         if: always()

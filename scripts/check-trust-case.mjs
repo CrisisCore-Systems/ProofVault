@@ -1,6 +1,14 @@
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 const npmCli = process.env.npm_execpath;
+const ignoredFixtureFiles = new Set([
+  "EXPECTED_OUTPUTS.template.json",
+  "FIXTURE_SPEC.md",
+  "README.md",
+]);
 
 function resolveCommand(command) {
   if (process.platform === "win32") {
@@ -30,6 +38,7 @@ function run(command, args, options = {}) {
     stdio: options.captureOutput ? ["ignore", "pipe", "pipe"] : "inherit",
     encoding: "utf8",
     cwd: options.cwd ?? process.cwd(),
+    env: options.env ?? process.env,
   });
 
   if (result.error) {
@@ -49,32 +58,134 @@ function fail(message, details) {
   process.exit(1);
 }
 
+function normalizeRelativePath(relativePath) {
+  return relativePath.replaceAll("\\", "/");
+}
+
+function listFixtureFiles(rootDir, currentDir = rootDir) {
+  const entries = readdirSync(currentDir, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const absolutePath = path.join(currentDir, entry.name);
+    const relativePath = normalizeRelativePath(path.relative(rootDir, absolutePath));
+
+    if (ignoredFixtureFiles.has(relativePath)) {
+      continue;
+    }
+
+    if (entry.isDirectory()) {
+      files.push(...listFixtureFiles(rootDir, absolutePath));
+      continue;
+    }
+
+    if (entry.isFile()) {
+      files.push(relativePath);
+    }
+  }
+
+  return files.sort((left, right) => left.localeCompare(right));
+}
+
 const trustCasePath = "docs/trust-case/demo";
+const trustCaseAbsolutePath = path.join(process.cwd(), trustCasePath);
+const outputDir = mkdtempSync(path.join(os.tmpdir(), "proofvault-trust-case-"));
 
-const testResult = run("npm", ["run", "test:trust-case"]);
+function writeArtifact(filePath, contents) {
+  if (!filePath) {
+    return;
+  }
 
-if (testResult.status !== 0) {
-  process.exit(testResult.status ?? 1);
+  writeFileSync(filePath, contents, "utf8");
 }
 
-const statusResult = run(
-  "git",
-  ["status", "--porcelain", "--untracked-files=all", "--", trustCasePath],
-  { captureOutput: true }
-);
-
-if (statusResult.status !== 0) {
-  fail("Unable to inspect trust-case fixture status.", statusResult.stderr);
-}
-
-if (statusResult.stdout.trim().length > 0) {
-  const diffResult = run("git", ["diff", "--", trustCasePath], { captureOutput: true });
-  const diffText = [diffResult.stdout, diffResult.stderr].filter(Boolean).join("\n");
-
-  fail(
-    "Trust-case specimen drift detected. Re-run the specimen generator and commit the updated artifacts under docs/trust-case/demo/.",
-    ["Changed files:", statusResult.stdout.trim(), "", diffText].filter(Boolean).join("\n")
+try {
+  const testResult = run(
+    "npm",
+    ["run", "test:trust-case"],
+    {
+      env: {
+        ...process.env,
+        TRUST_CASE_OUTPUT_DIR: outputDir,
+      },
+    }
   );
-}
 
-console.log("Trust-case specimen matches the checked-in fixture.");
+  if (testResult.status !== 0) {
+    process.exit(testResult.status ?? 1);
+  }
+
+  const statusResult = run(
+    "git",
+    ["status", "--porcelain", "--untracked-files=all", "--", trustCasePath],
+    { captureOutput: true }
+  );
+
+  if (statusResult.status !== 0) {
+    fail("Unable to inspect trust-case fixture status.", statusResult.stderr);
+  }
+
+  writeArtifact(process.env.TRUST_CASE_STATUS_PATH, statusResult.stdout);
+
+  const actualFiles = listFixtureFiles(trustCaseAbsolutePath);
+  const generatedFiles = listFixtureFiles(outputDir);
+  const actualSet = new Set(actualFiles);
+  const generatedSet = new Set(generatedFiles);
+  const missingFiles = actualFiles.filter((relativePath) => !generatedSet.has(relativePath));
+  const unexpectedFiles = generatedFiles.filter((relativePath) => !actualSet.has(relativePath));
+  const diffChunks = [];
+
+  if (missingFiles.length > 0) {
+    diffChunks.push(["Missing generated files:", ...missingFiles].join("\n"));
+  }
+
+  if (unexpectedFiles.length > 0) {
+    diffChunks.push(["Unexpected generated files:", ...unexpectedFiles].join("\n"));
+  }
+
+  for (const relativePath of actualFiles) {
+    if (!generatedSet.has(relativePath)) {
+      continue;
+    }
+
+    const compareResult = run(
+      "git",
+      [
+        "diff",
+        "--no-index",
+        "--ignore-cr-at-eol",
+        "--",
+        path.join(trustCaseAbsolutePath, relativePath),
+        path.join(outputDir, relativePath),
+      ],
+      { captureOutput: true }
+    );
+
+    if (compareResult.status > 1) {
+      fail(`Unable to compare the pinned trust-case specimen file ${relativePath}.`, compareResult.stderr);
+    }
+
+    if (compareResult.status === 1) {
+      diffChunks.push([compareResult.stdout, compareResult.stderr].filter(Boolean).join("\n"));
+    }
+  }
+
+  const diffText = diffChunks.join("\n\n");
+  writeArtifact(process.env.TRUST_CASE_DIFF_PATH, diffText);
+
+  if (statusResult.stdout.trim().length > 0 || diffChunks.length > 0) {
+    fail(
+      "Trust-case specimen drift detected. Re-run the specimen generator and commit the updated artifacts under docs/trust-case/demo/.",
+      [
+        statusResult.stdout.trim().length > 0 ? ["Changed files:", statusResult.stdout.trim()].join("\n") : null,
+        diffText.trim().length > 0 ? ["Generated drift:", diffText.trim()].join("\n\n") : null,
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+    );
+  }
+
+  console.log("Trust-case specimen matches the checked-in fixture.");
+} finally {
+  rmSync(outputDir, { recursive: true, force: true });
+}
