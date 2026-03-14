@@ -90,6 +90,7 @@ function listFixtureFiles(rootDir, currentDir = rootDir) {
 const trustCasePath = "docs/trust-case/demo";
 const trustCaseAbsolutePath = path.join(process.cwd(), trustCasePath);
 const outputDir = mkdtempSync(path.join(os.tmpdir(), "proofvault-trust-case-"));
+const shouldRetainOutputDir = process.env.TRUST_CASE_RETAIN_OUTPUT_DIR === "1";
 
 function writeArtifact(filePath, contents) {
   if (!filePath) {
@@ -97,6 +98,26 @@ function writeArtifact(filePath, contents) {
   }
 
   writeFileSync(filePath, contents, "utf8");
+}
+
+function writeDiagnosticArtifacts({ actualFiles, generatedFiles }) {
+  writeArtifact(process.env.TRUST_CASE_OUTPUT_DIR_PATH, `${outputDir}\n`);
+  writeArtifact(
+    process.env.TRUST_CASE_DEBUG_SUMMARY_PATH,
+    [
+      `cwd=${process.cwd()}`,
+      `platform=${process.platform}`,
+      `node=${process.version}`,
+      `outputDir=${outputDir}`,
+      "",
+      "actualFiles:",
+      ...actualFiles,
+      "",
+      "generatedFiles:",
+      ...generatedFiles,
+      "",
+    ].join("\n")
+  );
 }
 
 try {
@@ -129,6 +150,7 @@ try {
 
   const actualFiles = listFixtureFiles(trustCaseAbsolutePath);
   const generatedFiles = listFixtureFiles(outputDir);
+  writeDiagnosticArtifacts({ actualFiles, generatedFiles });
   const actualSet = new Set(actualFiles);
   const generatedSet = new Set(generatedFiles);
   const missingFiles = actualFiles.filter((relativePath) => !generatedSet.has(relativePath));
@@ -187,5 +209,7 @@ try {
 
   console.log("Trust-case specimen matches the checked-in fixture.");
 } finally {
-  rmSync(outputDir, { recursive: true, force: true });
+  if (!shouldRetainOutputDir) {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
 }
