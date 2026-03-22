@@ -79,8 +79,13 @@ describe("export preview helpers", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-09T12:00:00.000Z"));
     vi.mocked(listLedgerEntries).mockResolvedValue([]);
-    vi.mocked(upsertExportBundle).mockResolvedValue(undefined);
-    vi.mocked(appendLedgerEvent).mockResolvedValue(undefined);
+    vi.mocked(upsertExportBundle).mockResolvedValue("export-1");
+    vi.mocked(appendLedgerEvent).mockResolvedValue({
+      id: "ledger-1",
+      timestamp: "2026-03-09T12:00:00.000Z",
+      event: "export.created",
+      hash: "f".repeat(64),
+    });
     vi.mocked(downloadBlobFile).mockReset();
   });
 
