@@ -6,6 +6,26 @@
 			"type": "shell",
 			"command": "git status --short --branch",
 			"isBackground": false
+		},
+		{
+			"label": "git cleanup temp task",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				".vscode/tasks.json",
+				";",
+				"git",
+				"commit",
+				"-m",
+				"Remove temporary git task entry",
+				";",
+				"git",
+				"push",
+				"origin",
+				"main"
+			],
+			"isBackground": false
 		}
 	]
 }
