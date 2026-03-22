@@ -203,16 +203,14 @@ export async function buildProofVaultEvidenceManifest(input: {
 }
 
 export async function buildProofVaultEvidenceManifestIntegritySeal(input: {
-  caseFile: CaseFile;
-  caseId?: string;
-  items?: EvidenceItem[];
+  caseId: string;
   exportTimestamp: string;
   outputFormat: ProofVaultExportFormat;
   redactionPolicy: ProofVaultRedactionPolicy;
   evidenceRecords: ProofVaultEvidenceRecord[];
 }): Promise<string> {
   return hashValue({
-    caseId: input.caseId ?? input.caseFile.id,
+    caseId: input.caseId,
     exportTimestamp: input.exportTimestamp,
     outputFormat: input.outputFormat,
     redactionPolicy: input.redactionPolicy,

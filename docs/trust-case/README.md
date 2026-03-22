@@ -7,6 +7,7 @@ It is not a product vision deck and it is not a security marketing page. It is a
 ## Contents
 
 - [CASE_STUDY.md](./CASE_STUDY.md): public-facing narrative of how the trust case, specimen, drift enforcement, and release proof fit together.
+- [PORTFOLIO_CARD.md](./PORTFOLIO_CARD.md): one-page portfolio summary connecting the trust-case engineering work to outward-facing credibility.
 - [TRUST_CASE.md](./TRUST_CASE.md): system guarantees, trust boundaries, assumptions, and defensibility packet.
 - [THREAT_MODEL.md](./THREAT_MODEL.md): architecture-specific threats, abuse cases, and failure states.
 - [PLS_DISCLOSURE.md](./PLS_DISCLOSURE.md): self-assessment against Protective Legitimacy expectations, including withheld claims.

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { EvidenceItem } from "../../domain/types";
 import type { ProofVaultEvidenceManifest } from "../../types/proof-vault";
 import type { ProofVaultManifestVerificationResult } from "./proofVerifier";
 import {
@@ -6,6 +7,31 @@ import {
   buildVerificationReportFileName,
   buildVerificationReportFileNameFromMetadata,
 } from "./verificationReport";
+
+const backupEvidenceItems: EvidenceItem[] = [
+  {
+    id: "e1",
+    kind: "note",
+    title: "Witness note 1",
+    recordedAt: "2026-03-13T09:00:00.000Z",
+    includeInExport: true,
+    redactionStatus: "none",
+    dateCertainty: "exact",
+    createdAt: "2026-03-13T09:00:00.000Z",
+    updatedAt: "2026-03-13T09:00:00.000Z",
+  },
+  {
+    id: "e2",
+    kind: "note",
+    title: "Witness note 2",
+    recordedAt: "2026-03-13T09:05:00.000Z",
+    includeInExport: true,
+    redactionStatus: "none",
+    dateCertainty: "exact",
+    createdAt: "2026-03-13T09:05:00.000Z",
+    updatedAt: "2026-03-13T09:05:00.000Z",
+  },
+];
 
 const manifest: ProofVaultEvidenceManifest = {
   schemaVersion: 1,
@@ -66,7 +92,7 @@ describe("verificationReport", () => {
       backupSnapshot: {
         snapshotSha256: "b".repeat(64),
         exportedAt: "2026-03-13T10:00:00.000Z",
-        evidenceItems: [{ id: "e1" }, { id: "e2" }] as Array<{ id: string }>,
+        evidenceItems: backupEvidenceItems,
       },
     });
 

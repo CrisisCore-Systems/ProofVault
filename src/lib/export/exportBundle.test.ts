@@ -260,7 +260,15 @@ describe("export preview helpers", () => {
     );
 
     expect(downloadBlobFile).toHaveBeenCalledTimes(1);
-    const [, archiveBlob] = vi.mocked(downloadBlobFile).mock.calls[0];
+    const firstDownloadCall = vi.mocked(downloadBlobFile).mock.calls[0];
+
+    expect(firstDownloadCall).toBeDefined();
+
+    if (!firstDownloadCall) {
+      throw new Error("Expected export archive download to be triggered.");
+    }
+
+    const [, archiveBlob] = firstDownloadCall;
     const archiveBuffer = await archiveBlob.arrayBuffer();
     const archive = await JSZip.loadAsync(archiveBuffer);
     const fingerprintFile = archive.file("FINGERPRINT.txt");
@@ -268,15 +276,26 @@ describe("export preview helpers", () => {
     const manifestFileName = Object.keys(archive.files).find(
       (fileName) => fileName.startsWith("manifest-") && fileName.endsWith(".json")
     );
+
+    expect(manifestFileName).toBeDefined();
+
+    if (!manifestFileName) {
+      throw new Error("Expected export archive manifest file to exist.");
+    }
+
     const manifestFile = archive.file(manifestFileName);
 
     expect(fingerprintFile).toBeTruthy();
     expect(proofFile).toBeTruthy();
     expect(manifestFile).toBeTruthy();
 
-    const fingerprintText = await fingerprintFile!.async("string");
-    const proofManifest = JSON.parse(await proofFile!.async("string")) as { integritySeal: string };
-    const exportManifest = JSON.parse(await manifestFile!.async("string")) as { files: Record<string, string> };
+    if (!fingerprintFile || !proofFile || !manifestFile) {
+      throw new Error("Expected export archive files to be readable.");
+    }
+
+    const fingerprintText = await fingerprintFile.async("string");
+    const proofManifest = JSON.parse(await proofFile.async("string")) as { integritySeal: string };
+    const exportManifest = JSON.parse(await manifestFile.async("string")) as { files: Record<string, string> };
 
     expect(fingerprintText).toContain("ProofVault Export Fingerprint");
     expect(fingerprintText).toContain(`Case: ${baseCase.title}`);
