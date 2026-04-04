@@ -23,7 +23,6 @@ Door notice scan
    Type: incident
    MIME: -
    Size: -
-   SHA256: -
 
 2. door-notice.pdf
    Type: pdf

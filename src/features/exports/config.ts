@@ -18,6 +18,12 @@ export const SUMMARY_REVIEW_EXPORT_SETTINGS: ExportPacketSettings = {
   includeMetadataAppendix: true,
 };
 
+export const MINIMAL_EXPORT_SETTINGS: ExportPacketSettings = {
+  mode: "minimal",
+  includeAttachments: false,
+  includeMetadataAppendix: false,
+};
+
 export const FULL_ARCHIVE_EXPORT_SETTINGS: ExportPacketSettings = {
   mode: "full",
   includeAttachments: true,

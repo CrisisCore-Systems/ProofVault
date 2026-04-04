@@ -6,7 +6,7 @@ import {
   encryptCaseFileForStorage,
   encryptEvidenceItemForStorage,
 } from "../features/security/storage";
-import { decryptAttachmentRecord } from "../features/vault/attachmentCrypto";
+import { decryptAttachmentRecord, encryptAttachmentRecordForStorage } from "../features/vault/attachmentCrypto";
 import { getSessionKey } from "../features/security/session";
 
 async function hydrateCaseFile(caseFile: CaseFile | undefined): Promise<CaseFile | undefined> {
@@ -147,7 +147,7 @@ export async function createEvidenceItem(evidenceItem: EvidenceItem): Promise<st
 }
 
 export async function createAttachmentRecord(attachmentRecord: AttachmentRecord): Promise<string> {
-  return db.attachments.add(attachmentRecord);
+  return db.attachments.add(await encryptAttachmentRecordForStorage(attachmentRecord));
 }
 
 export async function getAttachmentRecordById(attachmentId: string): Promise<AttachmentRecord | undefined> {
@@ -182,10 +182,11 @@ export async function createAttachmentAndEvidenceItem(
   attachmentRecord: AttachmentRecord,
   evidenceItem: EvidenceItem
 ): Promise<string> {
+  const encryptedAttachmentRecord = await encryptAttachmentRecordForStorage(attachmentRecord);
   const encryptedEvidenceItem = await encryptEvidenceItemForStorage(evidenceItem);
 
   await db.transaction("rw", db.attachments, db.evidenceItems, async () => {
-    await db.attachments.add(attachmentRecord);
+    await db.attachments.add(encryptedAttachmentRecord);
     await db.evidenceItems.add(encryptedEvidenceItem);
   });
 

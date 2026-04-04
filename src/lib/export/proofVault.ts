@@ -5,21 +5,13 @@ import type {
   ProofVaultEvidenceRecord,
   ProofVaultExportFormat,
   ProofVaultRedactionPolicy,
-  ProofVaultSourceField,
   ProofVaultSourceSnapshot,
 } from "../../types/proof-vault";
-
-const MINIMAL_POLICY_OMISSIONS: ProofVaultSourceField[] = [
-  "attachment",
-  "description",
-  "encryptedPayload",
-  "locationText",
-  "originalFilename",
-  "peopleInvolved",
-  "redactions",
-  "sha256",
-  "tags",
-];
+import {
+  createExportSerializationPolicy,
+  resolveProofPolicyOmissions,
+  serializeEvidenceItemForExport,
+} from "./serializationPolicy";
 
 function sortObjectKeys(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -40,10 +32,6 @@ function sortObjectKeys(value: unknown): unknown {
 
 function canonicalize(value: unknown): string {
   return JSON.stringify(sortObjectKeys(value));
-}
-
-function uniqueFields(fields: ProofVaultSourceField[]): ProofVaultSourceField[] {
-  return [...new Set(fields)].sort((left, right) => left.localeCompare(right));
 }
 
 function buildSourceSnapshot(item: EvidenceItem): ProofVaultSourceSnapshot {
@@ -75,39 +63,20 @@ async function hashValue(value: unknown): Promise<string> {
   return sha256HexFromText(canonicalize(value));
 }
 
-function resolvePolicyId(mode: ExportBundle["mode"], includeAttachments: boolean): ProofVaultRedactionPolicy["id"] {
-  if (mode === "redacted" || !includeAttachments) {
-    return "minimal";
-  }
-
-  return "full";
-}
-
 export function createProofVaultRedactionPolicy(options: {
   mode: ExportBundle["mode"];
   includeAttachments: boolean;
   includeMetadataAppendix: boolean;
 }): ProofVaultRedactionPolicy {
-  const id = resolvePolicyId(options.mode, options.includeAttachments);
-
-  if (id === "minimal") {
-    return {
-      id,
-      mode: options.mode,
-      label: "Minimal",
-      omittedFields: [...MINIMAL_POLICY_OMISSIONS],
-      includeAttachments: options.includeAttachments,
-      includeMetadataAppendix: options.includeMetadataAppendix,
-    };
-  }
+  const policy = createExportSerializationPolicy(options);
 
   return {
-    id,
-    mode: options.mode,
-    label: "Full",
-    omittedFields: [],
-    includeAttachments: options.includeAttachments,
-    includeMetadataAppendix: options.includeMetadataAppendix,
+    id: policy.id,
+    mode: policy.mode,
+    label: policy.label,
+    omittedFields: [...policy.omittedFields],
+    includeAttachments: policy.includeAttachments,
+    includeMetadataAppendix: policy.includeMetadataAppendix,
   };
 }
 
@@ -117,25 +86,31 @@ export async function buildProofVaultEvidenceRecord(input: {
   outputFormat: ProofVaultExportFormat;
   redactionPolicy: ProofVaultRedactionPolicy;
 }): Promise<ProofVaultEvidenceRecord> {
-  const sourceSnapshot = buildSourceSnapshot(input.item);
-  const omittedFields = uniqueFields([
-    ...input.redactionPolicy.omittedFields,
-    ...(input.redactionPolicy.includeAttachments ? [] : (["attachment", "originalFilename", "sha256"] satisfies ProofVaultSourceField[])),
-    ...(input.item.redactions && input.item.redactions.length > 0 ? (["redactions"] satisfies ProofVaultSourceField[]) : []),
-  ]);
+  const serializerPolicy = createExportSerializationPolicy({
+    mode: input.redactionPolicy.mode,
+    includeAttachments: input.redactionPolicy.includeAttachments,
+    includeMetadataAppendix: input.redactionPolicy.includeMetadataAppendix,
+  });
+  const serializedItem = serializeEvidenceItemForExport(input.item, serializerPolicy);
+  const sourceSnapshot = buildSourceSnapshot(serializedItem);
+  const omittedFields = resolveProofPolicyOmissions(
+    serializerPolicy,
+    input.redactionPolicy.includeAttachments,
+    (input.item.redactions?.length ?? 0) > 0
+  );
 
-  const encryptedPayloadRef = input.item.encryptedPayload ? await hashValue(input.item.encryptedPayload) : null;
-  const attachmentRef = input.item.sha256 ?? null;
+  const encryptedPayloadRef = serializedItem.encryptedPayload ? await hashValue(serializedItem.encryptedPayload) : null;
+  const attachmentRef = serializedItem.sha256 ?? null;
   const sourceSnapshotRef = await hashValue(sourceSnapshot);
   const integrityRef = await hashValue({
-    sourceId: input.item.id,
+    sourceId: serializedItem.id,
     encryptedPayloadRef,
     attachmentRef,
     sourceSnapshotRef,
   });
 
   const integritySeal = await hashValue({
-    sourceId: input.item.id,
+    sourceId: serializedItem.id,
     provenance: {
       integrityRef,
       encryptedPayloadRef,
@@ -148,7 +123,7 @@ export async function buildProofVaultEvidenceRecord(input: {
   });
 
   return {
-    sourceId: input.item.id,
+    sourceId: serializedItem.id,
     provenance: {
       integrityRef,
       encryptedPayloadRef,

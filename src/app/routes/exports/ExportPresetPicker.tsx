@@ -3,6 +3,7 @@ import type { ExportBundle } from "../../../domain/types";
 import {
   DEFAULT_REDACTED_EXPORT_SETTINGS,
   FULL_ARCHIVE_EXPORT_SETTINGS,
+  MINIMAL_EXPORT_SETTINGS,
   SUMMARY_REVIEW_EXPORT_SETTINGS,
 } from "../../../features/exports/config";
 
@@ -16,6 +17,12 @@ export type ExportPreset = {
 };
 
 export const exportPresets: ExportPreset[] = [
+  {
+    id: "minimal-disclosure",
+    label: "Minimal disclosure",
+    description: "Minimal ZIP without attachments or appendix metadata.",
+    ...MINIMAL_EXPORT_SETTINGS,
+  },
   {
     id: "court-ready",
     label: "Court-ready redacted",
@@ -73,7 +80,7 @@ export function ExportPresetPicker({
         )}
       </div>
 
-      <div className="grid gap-2 md:grid-cols-3">
+      <div className="grid gap-2 md:grid-cols-4">
         {exportPresets.map((preset) => {
           const selected = activePresetId === preset.id;
 

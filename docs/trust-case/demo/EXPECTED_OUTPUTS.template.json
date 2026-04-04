@@ -2,32 +2,112 @@
   "release": "ProofVault Trust Case v1.0",
   "build": {
     "gitRef": "REPLACE_WITH_COMMIT",
-    "generatedAt": "REPLACE_WITH_ISO_TIMESTAMP"
+    "generatedAt": "REPLACE_WITH_ISO_TIMESTAMP",
+    "runtime": {
+      "node": "REPLACE_WITH_NODE_VERSION",
+      "webCrypto": true,
+      "deterministicHarness": true
+    }
   },
   "fixture": {
     "caseId": "REPLACE_WITH_CASE_ID",
     "caseTitle": "REPLACE_WITH_CASE_TITLE",
+    "exportMode": "full",
+    "includeAttachments": true,
+    "includeMetadataAppendix": true,
     "exportedAt": "REPLACE_WITH_EXPORT_TIMESTAMP",
     "recordCount": 0,
+    "archiveFiles": [],
     "validRunStatus": "verified",
-    "tamperRunStatus": "mismatch"
+    "tamperRunStatus": "mismatch",
+    "matrix": {
+      "fullExport": {
+        "archiveFile": "REPLACE_WITH_FULL_EXPORT_ZIP",
+        "status": "verified",
+        "attachmentCount": 0
+      },
+      "redactedExport": {
+        "archiveFile": "REPLACE_WITH_REDACTED_EXPORT_ZIP",
+        "strippedOriginalFilename": true,
+        "strippedAttachmentSha256": true,
+        "strippedPeopleInvolved": true,
+        "exportedAttachmentCount": 0
+      },
+      "minimalExport": {
+        "archiveFile": "REPLACE_WITH_MINIMAL_EXPORT_ZIP",
+        "attachmentEntriesPresent": false,
+        "metadataAppendixPresent": false,
+        "strippedSensitiveFields": true
+      },
+      "missingAttachmentCase": {
+        "archiveFile": "REPLACE_WITH_MISSING_ATTACHMENT_EXPORT_ZIP",
+        "attachmentStatus": "missing",
+        "omissionReason": "attachment-missing",
+        "attachmentPathPresent": false
+      },
+      "wrongBackupCase": {
+        "rejected": true,
+        "error": "REPLACE_WITH_BACKUP_FAILURE_MESSAGE"
+      },
+      "staleManifestCase": {
+        "status": "mismatch",
+        "mismatched": 1,
+        "manifestSealValid": true
+      },
+      "restoreRollbackCase": {
+        "stagedStatus": "staged",
+        "promotedStatus": "restored",
+        "rollbackRestoreStatus": "restored",
+        "rollbackSnapshotId": "REPLACE_WITH_ROLLBACK_SNAPSHOT_ID",
+        "snapshotCountBefore": 0,
+        "snapshotCountAfterPromote": 1,
+        "snapshotCountAfterRollback": 2
+      }
+    }
   },
   "files": {
     "exportZip": "proofvault-demo-export.zip",
     "encryptedBackup": "proofvault-demo-backup.pvault",
+    "exportManifest": "manifest-REPLACE_WITH_TIMESTAMP.json",
     "proofManifest": "proof-vault-evidence.json",
-    "verificationReport": "proofvault-verification-demo.json",
-    "certificatePdf": "proofvault-verification-demo.pdf",
-    "fingerprint": "FINGERPRINT.expected.txt"
+    "verificationReport": "proofvault-verification-report.json",
+    "tamperedVerificationReport": "proofvault-verification-report-tampered.json",
+    "certificate": "proofvault-verification-certificate.html",
+    "fingerprint": "FINGERPRINT.txt",
+    "metadataAppendix": "metadata-appendix.md",
+    "ledgerAudit": "ledger-audit.json"
   },
   "checksums": {
     "manifestIntegritySeal": "REPLACE_WITH_SHA256",
     "shortManifestFingerprint": "REPLACE_WITH_GROUPED_FINGERPRINT",
     "verificationReportSha256": "REPLACE_WITH_SHA256",
-    "backupSnapshotSha256": "REPLACE_WITH_SHA256"
+    "tamperedVerificationReportSha256": "REPLACE_WITH_SHA256",
+    "backupSnapshotSha256": "REPLACE_WITH_SHA256",
+    "attachmentSha256": "REPLACE_WITH_SHA256"
+  },
+  "verification": {
+    "valid": {
+      "status": "verified",
+      "issues": [],
+      "verified": 0,
+      "mismatched": 0,
+      "missing": 0,
+      "manifestSealValid": true,
+      "records": []
+    },
+    "tampered": {
+      "status": "mismatch",
+      "issues": [],
+      "verified": 0,
+      "mismatched": 0,
+      "missing": 0,
+      "manifestSealValid": false,
+      "records": []
+    }
   },
   "notes": [
     "Replace every placeholder with values generated from the frozen release build.",
-    "Add a short tamper summary describing what was modified and which mismatch signals were observed."
+    "Keep fixture.matrix aligned with the deterministic scenario set exercised by src/lib/export/trustCaseFixture.test.ts.",
+    "Do not add extra binary artifacts for matrix coverage unless the release process explicitly needs them; prefer recording scenario outcomes in EXPECTED_OUTPUTS.json."
   ]
 }

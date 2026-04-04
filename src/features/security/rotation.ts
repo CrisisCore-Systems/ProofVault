@@ -7,27 +7,10 @@ import {
   encryptCaseFileForStorageWithKey,
   encryptEvidenceItemForStorageWithKey,
 } from "./storage";
-import { decryptBlob, encryptBlob } from "../../lib/crypto/aes";
-
-async function reencryptAttachment(
-  attachment: AttachmentRecord,
-  previousKey: CryptoKey,
-  nextKey: CryptoKey
-): Promise<AttachmentRecord> {
-  if (!attachment.encrypted || !attachment.encryptionIv) {
-    return attachment;
-  }
-
-  const ciphertext = await attachment.blob.arrayBuffer();
-  const plainBlob = await decryptBlob(ciphertext, attachment.encryptionIv, attachment.mimeType, previousKey);
-  const { ciphertext: newCiphertext, iv: newIv } = await encryptBlob(plainBlob, nextKey);
-
-  return {
-    ...attachment,
-    blob: new Blob([newCiphertext]),
-    encryptionIv: newIv,
-  };
-}
+import {
+  decryptAttachmentRecord,
+  encryptAttachmentRecordForStorageWithKey,
+} from "../vault/attachmentCrypto";
 
 export async function rotatePassphrase(currentPassphrase: string, nextPassphrase: string): Promise<{
   casesUpdated: number;
@@ -63,7 +46,16 @@ export async function rotatePassphrase(currentPassphrase: string, nextPassphrase
   );
 
   const reencryptedAttachments = await Promise.all(
-    attachments.map((attachment) => reencryptAttachment(attachment, previousKey, preparedConfig.key))
+    attachments.map(async (attachmentRecord) => {
+      const decrypted = await decryptAttachmentRecord(attachmentRecord, previousKey);
+      return encryptAttachmentRecordForStorageWithKey(
+        {
+          ...decrypted,
+          updatedAt: new Date().toISOString(),
+        },
+        preparedConfig.key
+      );
+    })
   );
 
   await db.transaction("rw", db.cases, db.evidenceItems, db.attachments, async () => {

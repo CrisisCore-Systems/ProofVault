@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { saveAttachment } from "./attachmentActions";
 
-const createAttachmentAndEvidenceItemMock = vi.fn();
-const appendLedgerEventMock = vi.fn();
-const sha256HexFromBlobMock = vi.fn();
-const encryptBlobMock = vi.fn();
+const {
+  createAttachmentAndEvidenceItemMock,
+  appendLedgerEventMock,
+  sha256HexFromBlobMock,
+  encryptBlobMock,
+} = vi.hoisted(() => ({
+  createAttachmentAndEvidenceItemMock: vi.fn(),
+  appendLedgerEventMock: vi.fn(),
+  sha256HexFromBlobMock: vi.fn(),
+  encryptBlobMock: vi.fn(),
+}));
 
 vi.mock("../../db/queries", () => ({
   createAttachmentAndEvidenceItem: createAttachmentAndEvidenceItemMock,

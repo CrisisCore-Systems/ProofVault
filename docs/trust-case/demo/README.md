@@ -18,6 +18,8 @@ The fixture should be generated from a frozen build and should let another revie
 - `proofvault-verification-report-tampered.json`
 - `proofvault-verification-certificate.html`
 
+The expanded scenario matrix is recorded in `EXPECTED_OUTPUTS.json` under `fixture.matrix`. The repo keeps one pinned public specimen ZIP plus one pinned encrypted backup, then records the additional redacted, minimal, missing-attachment, wrong-backup, stale-manifest, and rollback outcomes as deterministic expectation data instead of checking in multiple redundant archives.
+
 ## Important rule
 
 Do not invent fixture outputs by hand.

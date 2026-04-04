@@ -1,1 +1,0 @@
-function d(t,n,o="text/markdown;charset=utf-8"){const e=new Blob([n],{type:o});c(t,e)}function c(t,n){const o=URL.createObjectURL(n),e=document.createElement("a");e.href=o,e.download=t,document.body.appendChild(e),e.click(),e.remove(),URL.revokeObjectURL(o)}export{d as a,c as d};

@@ -86,7 +86,11 @@ export function ExportPacketForm({
       <div className="space-y-2">
         <span className="block text-sm text-zinc-200">Mode</span>
         <div className="flex flex-wrap gap-2">
-          {[{ value: "redacted", label: "Redacted" }, { value: "full", label: "Full" }].map((option) => {
+          {[
+            { value: "minimal", label: "Minimal" },
+            { value: "redacted", label: "Redacted" },
+            { value: "full", label: "Full" },
+          ].map((option) => {
             const selected = mode === option.value;
 
             return (
@@ -114,9 +118,10 @@ export function ExportPacketForm({
             type="checkbox"
             checked={includeAttachments}
             onChange={(event) => onToggleAttachments(event.target.checked)}
+            disabled={mode === "minimal"}
             className="h-4 w-4 rounded border-zinc-600 bg-zinc-950"
           />
-          <span>Include attachments</span>
+          <span>{mode === "minimal" ? "Attachments disabled in minimal mode" : "Include attachments"}</span>
         </label>
 
         <label className="flex items-center gap-3 rounded-md border border-zinc-800 bg-zinc-950/80 px-3 py-3 text-sm text-zinc-200">
@@ -124,16 +129,18 @@ export function ExportPacketForm({
             type="checkbox"
             checked={includeMetadataAppendix}
             onChange={(event) => onToggleMetadataAppendix(event.target.checked)}
+            disabled={mode === "minimal"}
             className="h-4 w-4 rounded border-zinc-600 bg-zinc-950"
           />
-          <span>Include metadata appendix</span>
+          <span>{mode === "minimal" ? "Metadata appendix disabled in minimal mode" : "Include metadata appendix"}</span>
         </label>
       </div>
 
       <div className="rounded-md border border-zinc-800 bg-zinc-950/80 px-3 py-3 text-xs text-zinc-400">
         <p>Output format: ZIP only in v0.1.</p>
         <p className="mt-1">Preview: {exportableItemsCount} export-ready items, {attachmentCandidates} attachment candidates.</p>
-        <p className="mt-1">Redacted mode omits fully redacted files and unsupported redacted non-image attachments.</p>
+        <p className="mt-1">Redacted mode strips people, tags, filenames, and attachment hashes from exported artifacts.</p>
+        <p className="mt-1">Minimal mode emits a summary-only ZIP without attachments or metadata appendix.</p>
       </div>
 
       {exportError ? (

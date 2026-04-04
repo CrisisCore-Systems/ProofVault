@@ -26,6 +26,10 @@ function attachmentHandling(policy: ProofVaultRedactionPolicy): string {
     return "Attachments were excluded from the export package.";
   }
 
+  if (policy.mode === "minimal") {
+    return "Attachments were excluded from the export package.";
+  }
+
   if (policy.mode === "redacted") {
     return "Attachments were included only when consistent with the selected redaction settings.";
   }
@@ -42,6 +46,10 @@ function metadataAppendixHandling(policy: ProofVaultRedactionPolicy): string {
 function summary(policy: ProofVaultRedactionPolicy): string {
   if (policy.id === "minimal") {
     return "This policy minimizes sensitive contextual data while preserving chain-of-custody anchors and the evidence timeline.";
+  }
+
+  if (policy.id === "redacted") {
+    return "This policy keeps narrative context while stripping people, tags, original filenames, and attachment hashes from exported artifacts.";
   }
 
   return "This policy preserves the full export context without policy-driven field omissions.";

@@ -38,6 +38,20 @@ The specimen is revalidated by:
 
 The gate regenerates the specimen, compares the checked-in files under `docs/trust-case/demo/`, and fails if drift appears without an explicit fixture update.
 
+## Release proof coverage
+
+The specimen remains pinned, but release proof now covers a small matrix instead of a single happy path:
+
+| Case | Purpose |
+| --- | --- |
+| full export | Confirms the full serializer preserves attachment names, hashes, appendix metadata, and proof anchors. |
+| redacted export | Confirms redacted serializers strip people, tags, original filenames, and attachment hashes across all emitted artifacts. |
+| minimal export | Confirms minimal serializers emit summary-only artifacts without attachments or appendix metadata. |
+| missing attachment case | Confirms missing attachment records are surfaced as missing or omitted without silently inventing attachment metadata. |
+| wrong backup case | Confirms backup import and verification fail closed on an incorrect backup passphrase. |
+| stale manifest case | Confirms proof verification fails when the manifest no longer matches current vault state. |
+| restore rollback case | Confirms restore promotion captures an automatic pre-restore snapshot before the staged backup replaces the live vault. |
+
 ## Release stance
 
 This dossier ships as a named release artifact, not a drifting notes folder.

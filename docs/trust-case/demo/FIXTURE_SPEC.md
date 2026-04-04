@@ -27,6 +27,7 @@ The release fixture should contain the following generated artifacts:
 - expected record count
 - expected verification status for the valid run
 - expected verification status for the tamper run
+- matrix outcomes for redacted export, minimal export, missing attachment, wrong backup, stale manifest, and rollback restore
 
 ## Minimum release checks
 
@@ -35,3 +36,4 @@ The release fixture should contain the following generated artifacts:
 3. The tampered or stale manifest reports mismatch.
 4. The case ID, record count, and export timestamp line up across manifest, report, and fixture expectations.
 5. The fingerprint file and the expectation file agree on the manifest seal.
+6. The expectation file records the serializer and restore matrix under `fixture.matrix` without inventing additional binary artifacts by hand.

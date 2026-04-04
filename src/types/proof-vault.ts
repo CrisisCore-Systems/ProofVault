@@ -15,7 +15,7 @@ export type ProofVaultSourceField =
   | "tags";
 
 export type ProofVaultRedactionPolicy = {
-  id: "full" | "minimal";
+  id: "full" | "redacted" | "minimal";
   mode: ExportBundle["mode"];
   label: string;
   omittedFields: ProofVaultSourceField[];

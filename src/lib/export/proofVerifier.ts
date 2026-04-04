@@ -22,8 +22,8 @@ const ProofVaultSourceFieldSchema = z.enum([
 ]);
 
 const ProofVaultRedactionPolicySchema = z.object({
-  id: z.enum(["full", "minimal"]),
-  mode: z.enum(["full", "redacted"]),
+  id: z.enum(["full", "redacted", "minimal"]),
+  mode: z.enum(["full", "redacted", "minimal"]),
   label: z.string().min(1),
   omittedFields: z.array(ProofVaultSourceFieldSchema),
   includeAttachments: z.boolean(),

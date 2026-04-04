@@ -12,7 +12,13 @@ import {
   upsertExportBundle,
 } from "../../db/queries";
 import { prepareSessionConfig, getStoredSecurityConfigForBackup } from "../../features/security/session";
-import { exportEncryptedBackup, readVerificationSnapshotFromBackup } from "../../features/security/backup";
+import {
+  exportEncryptedBackup,
+  importEncryptedBackup,
+  listRollbackSnapshots,
+  readVerificationSnapshotFromBackup,
+  restoreRollbackSnapshot,
+} from "../../features/security/backup";
 import {
   decryptCaseFileFromStorageWithKey,
   decryptEvidenceItemFromStorageWithKey,
@@ -31,23 +37,56 @@ import { buildVerificationReport } from "./verificationReport";
 
 type MockTable<T> = {
   toArray: ReturnType<typeof vi.fn<() => Promise<T[]>>>;
+  clear: ReturnType<typeof vi.fn<() => Promise<void>>>;
+  bulkPut: ReturnType<typeof vi.fn<(items: T[]) => Promise<void>>>;
 };
 
-const { mockDb } = vi.hoisted(() => ({
-  mockDb: {
-    cases: { toArray: vi.fn() },
-    evidenceItems: { toArray: vi.fn() },
-    exportBundles: { toArray: vi.fn() },
-    attachments: { toArray: vi.fn() },
-    ledger: { toArray: vi.fn() },
-  } satisfies {
-    cases: MockTable<CaseFile>;
-    evidenceItems: MockTable<EvidenceItem>;
-    exportBundles: MockTable<ExportBundle>;
-    attachments: MockTable<AttachmentRecord>;
-    ledger: MockTable<LedgerEntry>;
-  },
-}));
+const { mockDb, mockVaultState } = vi.hoisted(() => {
+  const state = {
+    cases: [] as CaseFile[],
+    evidenceItems: [] as EvidenceItem[],
+    exportBundles: [] as ExportBundle[],
+    attachments: [] as AttachmentRecord[],
+    ledger: [] as LedgerEntry[],
+  };
+
+  const createTable = <T extends { id: string }>(key: keyof typeof state) => ({
+    toArray: vi.fn(async () => [...((state[key] as unknown) as T[])]),
+    clear: vi.fn(async () => {
+      state[key] = [] as never;
+    }),
+    bulkPut: vi.fn(async (items: T[]) => {
+      state[key] = [...items] as never;
+    }),
+  });
+
+  return {
+    mockVaultState: state,
+    mockDb: {
+      cases: createTable<CaseFile>("cases"),
+      evidenceItems: createTable<EvidenceItem>("evidenceItems"),
+      exportBundles: createTable<ExportBundle>("exportBundles"),
+      attachments: createTable<AttachmentRecord>("attachments"),
+      ledger: createTable<LedgerEntry>("ledger"),
+      transaction: vi.fn(async (...args: unknown[]) => {
+        const callback = args.at(-1);
+
+        if (typeof callback === "function") {
+          return callback();
+        }
+
+        return undefined;
+      }),
+    } satisfies {
+      cases: MockTable<CaseFile>;
+      evidenceItems: MockTable<EvidenceItem>;
+      exportBundles: MockTable<ExportBundle>;
+      attachments: MockTable<AttachmentRecord>;
+      ledger: MockTable<LedgerEntry>;
+      transaction: ReturnType<typeof vi.fn>;
+    },
+  };
+});
 
 vi.mock("../../db/index", () => ({
   db: mockDb,
@@ -120,6 +159,20 @@ function readDownloadCall(callIndex: number): { fileName: string; blob: Blob } {
     fileName: call[0],
     blob: call[1],
   };
+}
+
+function seedMockVaultState(input: {
+  cases?: CaseFile[];
+  evidenceItems?: EvidenceItem[];
+  exportBundles?: ExportBundle[];
+  attachments?: AttachmentRecord[];
+  ledger?: LedgerEntry[];
+}) {
+  mockVaultState.cases = [...(input.cases ?? [])];
+  mockVaultState.evidenceItems = [...(input.evidenceItems ?? [])];
+  mockVaultState.exportBundles = [...(input.exportBundles ?? [])];
+  mockVaultState.attachments = [...(input.attachments ?? [])];
+  mockVaultState.ledger = [...(input.ledger ?? [])];
 }
 
 function collectArchiveFiles(archive: JSZip): string[] {
@@ -376,20 +429,25 @@ describe("trust case fixture generator", () => {
     const hydratedAttachmentItem = await decryptEvidenceItemFromStorageWithKey(storedAttachmentItem, preparedSession.key);
     const hydratedExcludedNote = await decryptEvidenceItemFromStorageWithKey(storedExcludedNote, preparedSession.key);
 
-    const ledgerEntries: LedgerEntry[] = [];
-    const exportBundles: ExportBundle[] = [];
+    const attachmentLookup = new Map<string, AttachmentRecord>([[attachmentItem.id, attachmentRecord]]);
 
-    vi.mocked(getHydratedAttachmentByEvidenceItemId).mockImplementation(async (evidenceId) =>
-      evidenceId === attachmentItem.id ? attachmentRecord : undefined
-    );
-    vi.mocked(listLedgerEntries).mockImplementation(async () => [...ledgerEntries]);
-    vi.mocked(getLatestLedgerEntry).mockImplementation(async () => ledgerEntries.at(-1));
+    seedMockVaultState({
+      cases: [storedCase],
+      evidenceItems: [storedIncident, storedAttachmentItem, storedExcludedNote],
+      exportBundles: [],
+      attachments: [attachmentRecord],
+      ledger: [],
+    });
+
+    vi.mocked(getHydratedAttachmentByEvidenceItemId).mockImplementation(async (evidenceId) => attachmentLookup.get(evidenceId));
+    vi.mocked(listLedgerEntries).mockImplementation(async () => [...mockVaultState.ledger]);
+    vi.mocked(getLatestLedgerEntry).mockImplementation(async () => mockVaultState.ledger.at(-1));
     vi.mocked(appendLedgerEntry).mockImplementation(async (entry) => {
-      ledgerEntries.push(entry);
+      mockVaultState.ledger.push(entry);
       return entry.id;
     });
     vi.mocked(upsertExportBundle).mockImplementation(async (bundle) => {
-      exportBundles.push(bundle);
+      mockVaultState.exportBundles.push(bundle);
       return bundle.id;
     });
 
@@ -421,7 +479,7 @@ describe("trust case fixture generator", () => {
     });
 
     expect(downloadBlobFile).toHaveBeenCalledTimes(1);
-    expect(exportBundles).toHaveLength(1);
+  expect(mockVaultState.exportBundles).toHaveLength(1);
 
     const exportDownload = readDownloadCall(0);
     const archiveBuffer = await exportDownload.blob.arrayBuffer();
@@ -454,12 +512,6 @@ describe("trust case fixture generator", () => {
     };
 
     vi.mocked(getStoredSecurityConfigForBackup).mockReturnValue(securityConfig);
-
-    mockDb.cases.toArray.mockResolvedValue([storedCase]);
-    mockDb.evidenceItems.toArray.mockResolvedValue([storedIncident, storedAttachmentItem, storedExcludedNote]);
-    mockDb.exportBundles.toArray.mockResolvedValue([...exportBundles]);
-    mockDb.attachments.toArray.mockResolvedValue([attachmentRecord]);
-    mockDb.ledger.toArray.mockResolvedValue([...ledgerEntries]);
 
     await exportEncryptedBackup(backupPassphrase);
 
@@ -526,6 +578,220 @@ describe("trust case fixture generator", () => {
     expect(tamperedVerification.mismatched).toBeGreaterThanOrEqual(1);
     expect(tamperedVerification.manifestSealValid).toBe(false);
 
+    vi.mocked(downloadBlobFile).mockClear();
+
+    await generateExportPacket({
+      caseFile: hydratedCase,
+      items: [hydratedIncident, hydratedAttachmentItem, hydratedExcludedNote],
+      mode: "redacted",
+      includeAttachments: true,
+      includeMetadataAppendix: true,
+    });
+
+    const redactedDownload = readDownloadCall(0);
+    const redactedArchive = await JSZip.loadAsync(await redactedDownload.blob.arrayBuffer());
+    const redactedArchiveFiles = collectArchiveFiles(redactedArchive);
+    const redactedManifestFileName = redactedArchiveFiles.find(
+      (fileName) => fileName.startsWith("manifest-") && fileName.endsWith(".json")
+    );
+
+    if (!redactedManifestFileName) {
+      throw new Error("Expected a redacted export manifest JSON file in the archive.");
+    }
+
+    const redactedManifestText = await redactedArchive.file(redactedManifestFileName)!.async("string");
+    const redactedMetadataAppendix = await redactedArchive.file("metadata-appendix.md")!.async("string");
+    const redactedAttachmentFiles = redactedArchiveFiles.filter(
+      (fileName) => fileName.startsWith("attachments/") && fileName !== "attachments/"
+    );
+
+    expect(redactedManifestText).not.toContain("door-notice.pdf");
+    expect(redactedManifestText).not.toContain(attachmentSha256);
+    expect(redactedMetadataAppendix).not.toContain("Front desk clerk");
+    expect(redactedMetadataAppendix).not.toContain("Neighbor witness");
+    expect(redactedMetadataAppendix).not.toContain("door-notice.pdf");
+    expect(redactedAttachmentFiles).toHaveLength(1);
+
+    vi.mocked(downloadBlobFile).mockClear();
+
+    await generateExportPacket({
+      caseFile: hydratedCase,
+      items: [hydratedIncident, hydratedAttachmentItem, hydratedExcludedNote],
+      mode: "minimal",
+      includeAttachments: true,
+      includeMetadataAppendix: true,
+    });
+
+    const minimalDownload = readDownloadCall(0);
+    const minimalArchive = await JSZip.loadAsync(await minimalDownload.blob.arrayBuffer());
+    const minimalArchiveFiles = collectArchiveFiles(minimalArchive);
+    const minimalManifestFileName = minimalArchiveFiles.find(
+      (fileName) => fileName.startsWith("manifest-") && fileName.endsWith(".json")
+    );
+
+    if (!minimalManifestFileName) {
+      throw new Error("Expected a minimal export manifest JSON file in the archive.");
+    }
+
+    const minimalManifestText = await minimalArchive.file(minimalManifestFileName)!.async("string");
+
+    expect(minimalArchive.file("metadata-appendix.md")).toBeNull();
+    expect(minimalArchiveFiles.some((fileName) => fileName.startsWith("attachments/"))).toBe(false);
+    expect(minimalManifestText).not.toContain("peopleInvolved");
+    expect(minimalManifestText).not.toContain("tags");
+    expect(minimalManifestText).not.toContain("sha256");
+    expect(minimalManifestText).not.toContain("originalFilename");
+
+    attachmentLookup.delete(attachmentItem.id);
+    vi.mocked(downloadBlobFile).mockClear();
+
+    await generateExportPacket({
+      caseFile: hydratedCase,
+      items: [hydratedAttachmentItem],
+      mode: "full",
+      includeAttachments: true,
+      includeMetadataAppendix: false,
+    });
+
+    const missingAttachmentDownload = readDownloadCall(0);
+    const missingAttachmentArchive = await JSZip.loadAsync(await missingAttachmentDownload.blob.arrayBuffer());
+    const missingAttachmentManifestFileName = collectArchiveFiles(missingAttachmentArchive).find(
+      (fileName) => fileName.startsWith("manifest-") && fileName.endsWith(".json")
+    );
+
+    if (!missingAttachmentManifestFileName) {
+      throw new Error("Expected a missing-attachment manifest JSON file in the archive.");
+    }
+
+    const missingAttachmentManifest = JSON.parse(
+      await missingAttachmentArchive.file(missingAttachmentManifestFileName)!.async("string")
+    ) as {
+      items: Array<{
+        id: string;
+        attachmentStatus?: string;
+        attachmentPath?: string;
+        omissionReason?: string;
+      }>;
+    };
+    const missingAttachmentItem = missingAttachmentManifest.items.find((item) => item.id === attachmentItem.id);
+
+    expect(missingAttachmentItem?.attachmentStatus).toBe("missing");
+    expect(missingAttachmentItem?.attachmentPath).toBeUndefined();
+    expect(missingAttachmentItem?.omissionReason).toBe("attachment-missing");
+
+    attachmentLookup.set(attachmentItem.id, attachmentRecord);
+
+    let wrongBackupError = "";
+
+    try {
+      await readVerificationSnapshotFromBackup(
+        backupFile,
+        ["wrong", "backup", "passphrase", "fixture"].join("-"),
+        vaultPassphrase
+      );
+    } catch (error) {
+      wrongBackupError = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(wrongBackupError).toContain("incorrect");
+
+    const staleVerification = await verifyProofVaultEvidenceManifest({
+      manifest: proofManifest,
+      caseFile: backupSnapshot.cases[0],
+      items: backupSnapshot.evidenceItems.map((item, index) =>
+        index === 0
+          ? {
+              ...item,
+              description: "Post-export mutation introduced after the pinned release artifact was captured.",
+            }
+          : item
+      ),
+    });
+
+    expect(staleVerification.status).toBe("mismatch");
+    expect(staleVerification.mismatched).toBeGreaterThanOrEqual(1);
+
+    const rollbackCurrentCase: CaseFile = {
+      id: "case-live-before-restore",
+      title: "Live Vault Before Restore",
+      type: "other",
+      description: "Current vault state captured immediately before applying the staged trust-case restore.",
+      status: "active",
+      createdAt: "2026-03-13T15:50:00.000Z",
+      updatedAt: "2026-03-13T16:10:00.000Z",
+    };
+    const rollbackCurrentItem: EvidenceItem = {
+      id: "ev-live-before-restore",
+      caseId: rollbackCurrentCase.id,
+      kind: "note",
+      title: "Current vault note",
+      description: "This note should reappear when the rollback snapshot is restored.",
+      recordedAt: "2026-03-13T16:05:00.000Z",
+      includeInExport: true,
+      redactionStatus: "none",
+      dateCertainty: "exact",
+      createdAt: "2026-03-13T16:05:00.000Z",
+      updatedAt: "2026-03-13T16:05:00.000Z",
+    };
+    const storedRollbackCurrentCase = await encryptCaseFileForStorageWithKey(rollbackCurrentCase, preparedSession.key);
+    const storedRollbackCurrentItem = await encryptEvidenceItemForStorageWithKey(rollbackCurrentItem, preparedSession.key);
+    const rollbackSnapshotCountBefore = (await listRollbackSnapshots()).length;
+
+    seedMockVaultState({
+      cases: [storedRollbackCurrentCase],
+      evidenceItems: [storedRollbackCurrentItem],
+      exportBundles: [],
+      attachments: [],
+      ledger: [],
+    });
+
+    const stagedImport = await importEncryptedBackup(backupFile, backupPassphrase, {
+      includeAttachments: true,
+      includeExportBundles: true,
+    });
+
+    expect(stagedImport.status).toBe("staged");
+
+    if (stagedImport.status !== "staged") {
+      throw new Error("Expected the first restore attempt to stage the backup.");
+    }
+
+    const promotedImport = await importEncryptedBackup(backupFile, backupPassphrase, {
+      includeAttachments: true,
+      includeExportBundles: true,
+      confirmationToken: stagedImport.stagedRestore.stageId,
+    });
+
+    expect(promotedImport.status).toBe("restored");
+
+    if (promotedImport.status !== "restored") {
+      throw new Error("Expected the staged backup confirmation to promote the restore.");
+    }
+
+    const rollbackSnapshotsAfterPromote = await listRollbackSnapshots();
+    const promotedRollbackSnapshot = rollbackSnapshotsAfterPromote.find(
+      (snapshot) => snapshot.id === promotedImport.rollbackSnapshotId
+    );
+
+    expect(rollbackSnapshotsAfterPromote.length).toBe(rollbackSnapshotCountBefore + 1);
+    expect(promotedRollbackSnapshot).toMatchObject({
+      counts: {
+        cases: 1,
+        evidenceItems: 1,
+        attachments: 0,
+        exportBundles: 0,
+        ledger: 0,
+      },
+    });
+    expect((await mockDb.cases.toArray()).map((item) => item.id)).toEqual([caseFile.id]);
+
+    const rollbackRestoreResult = await restoreRollbackSnapshot(promotedImport.rollbackSnapshotId);
+    const rollbackSnapshotsAfterRollback = await listRollbackSnapshots();
+
+    expect(rollbackRestoreResult.status).toBe("restored");
+    expect(rollbackSnapshotsAfterRollback.length).toBe(rollbackSnapshotsAfterPromote.length + 1);
+    expect((await mockDb.cases.toArray()).map((item) => item.id)).toEqual([rollbackCurrentCase.id]);
+
     const certificateHtml = generateClinicalVerificationCertificateHtml(validReport);
     const expectations = {
       release: "ProofVault Trust Case v1.0",
@@ -549,6 +815,58 @@ describe("trust case fixture generator", () => {
         archiveFiles,
         validRunStatus: validReport.status,
         tamperRunStatus: tamperedReport.status,
+        matrix: {
+          fullExport: {
+            archiveFile: exportDownload.fileName,
+            status: validReport.status,
+            attachmentCount: archiveFiles.filter(
+              (fileName) => fileName.startsWith("attachments/") && fileName !== "attachments/"
+            ).length,
+          },
+          redactedExport: {
+            archiveFile: redactedDownload.fileName,
+            strippedOriginalFilename: !redactedManifestText.includes("door-notice.pdf"),
+            strippedAttachmentSha256: !redactedManifestText.includes(attachmentSha256),
+            strippedPeopleInvolved:
+              !redactedMetadataAppendix.includes("Front desk clerk") &&
+              !redactedMetadataAppendix.includes("Neighbor witness"),
+            exportedAttachmentCount: redactedAttachmentFiles.length,
+          },
+          minimalExport: {
+            archiveFile: minimalDownload.fileName,
+            attachmentEntriesPresent: minimalArchiveFiles.some((fileName) => fileName.startsWith("attachments/")),
+            metadataAppendixPresent: minimalArchive.file("metadata-appendix.md") !== null,
+            strippedSensitiveFields:
+              !minimalManifestText.includes("peopleInvolved") &&
+              !minimalManifestText.includes("tags") &&
+              !minimalManifestText.includes("sha256") &&
+              !minimalManifestText.includes("originalFilename"),
+          },
+          missingAttachmentCase: {
+            archiveFile: missingAttachmentDownload.fileName,
+            attachmentStatus: missingAttachmentItem?.attachmentStatus ?? "unknown",
+            omissionReason: missingAttachmentItem?.omissionReason ?? null,
+            attachmentPathPresent: Boolean(missingAttachmentItem?.attachmentPath),
+          },
+          wrongBackupCase: {
+            rejected: wrongBackupError.includes("incorrect"),
+            error: wrongBackupError,
+          },
+          staleManifestCase: {
+            status: staleVerification.status,
+            mismatched: staleVerification.mismatched,
+            manifestSealValid: staleVerification.manifestSealValid,
+          },
+          restoreRollbackCase: {
+            stagedStatus: stagedImport.status,
+            promotedStatus: promotedImport.status,
+            rollbackRestoreStatus: rollbackRestoreResult.status,
+            rollbackSnapshotId: promotedImport.rollbackSnapshotId,
+            snapshotCountBefore: rollbackSnapshotCountBefore,
+            snapshotCountAfterPromote: rollbackSnapshotsAfterPromote.length,
+            snapshotCountAfterRollback: rollbackSnapshotsAfterRollback.length,
+          },
+        },
       },
       files: {
         exportZip: exportDownload.fileName,
@@ -578,6 +896,7 @@ describe("trust case fixture generator", () => {
         "The fixture is generated under a fixed Date shim and deterministic random values so names, hashes, and encryption envelopes are stable.",
         "The printable certificate is emitted as HTML because the current implementation opens a print-ready document rather than exporting a PDF file directly.",
         "The ledger audit captured inside the ZIP reflects the case ledger before the export.generated event is appended at the end of archive creation.",
+        "Expanded matrix coverage is recorded inside fixture.matrix so the pinned release artifact documents serializer behavior, backup failures, stale-manifest detection, and rollback snapshot promotion without checking in multiple redundant ZIPs.",
       ],
     };
 

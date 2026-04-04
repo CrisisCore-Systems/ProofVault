@@ -30,7 +30,51 @@
       "timeline.md"
     ],
     "validRunStatus": "verified",
-    "tamperRunStatus": "mismatch"
+    "tamperRunStatus": "mismatch",
+    "matrix": {
+      "fullExport": {
+        "archiveFile": "proofvault-trust-case-specimen-full-2026-03-13T16-20-00-000Z.zip",
+        "status": "verified",
+        "attachmentCount": 1
+      },
+      "redactedExport": {
+        "archiveFile": "proofvault-trust-case-specimen-redacted-2026-03-13T16-20-00-000Z.zip",
+        "strippedOriginalFilename": true,
+        "strippedAttachmentSha256": true,
+        "strippedPeopleInvolved": true,
+        "exportedAttachmentCount": 1
+      },
+      "minimalExport": {
+        "archiveFile": "proofvault-trust-case-specimen-minimal-2026-03-13T16-20-00-000Z.zip",
+        "attachmentEntriesPresent": false,
+        "metadataAppendixPresent": false,
+        "strippedSensitiveFields": true
+      },
+      "missingAttachmentCase": {
+        "archiveFile": "proofvault-trust-case-specimen-full-2026-03-13T16-20-00-000Z.zip",
+        "attachmentStatus": "missing",
+        "omissionReason": "attachment-missing",
+        "attachmentPathPresent": false
+      },
+      "wrongBackupCase": {
+        "rejected": true,
+        "error": "Backup passphrase is incorrect or the backup file is corrupted."
+      },
+      "staleManifestCase": {
+        "status": "mismatch",
+        "mismatched": 1,
+        "manifestSealValid": true
+      },
+      "restoreRollbackCase": {
+        "stagedStatus": "staged",
+        "promotedStatus": "restored",
+        "rollbackRestoreStatus": "restored",
+        "rollbackSnapshotId": "00000000-0000-4000-8000-000000000012",
+        "snapshotCountBefore": 0,
+        "snapshotCountAfterPromote": 1,
+        "snapshotCountAfterRollback": 2
+      }
+    }
   },
   "files": {
     "exportZip": "proofvault-trust-case-specimen-full-2026-03-13T16-20-00-000Z.zip",
@@ -101,6 +145,7 @@
   "notes": [
     "The fixture is generated under a fixed Date shim and deterministic random values so names, hashes, and encryption envelopes are stable.",
     "The printable certificate is emitted as HTML because the current implementation opens a print-ready document rather than exporting a PDF file directly.",
-    "The ledger audit captured inside the ZIP reflects the case ledger before the export.generated event is appended at the end of archive creation."
+    "The ledger audit captured inside the ZIP reflects the case ledger before the export.generated event is appended at the end of archive creation.",
+    "Expanded matrix coverage is recorded inside fixture.matrix so the pinned release artifact documents serializer behavior, backup failures, stale-manifest detection, and rollback snapshot promotion without checking in multiple redundant ZIPs."
   ]
 }

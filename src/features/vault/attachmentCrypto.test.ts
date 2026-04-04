@@ -1,11 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AttachmentRecord } from "../../domain/types";
-import { decryptAttachmentRecord } from "./attachmentCrypto";
+import { decryptAttachmentRecord, encryptAttachmentRecordForStorage } from "./attachmentCrypto";
 
-const decryptBlobMock = vi.fn();
+const { decryptBlobMock, encryptBlobMock, hasConfiguredAppLockMock, getSessionKeyOrThrowMock } = vi.hoisted(() => ({
+  decryptBlobMock: vi.fn(),
+  encryptBlobMock: vi.fn(),
+  hasConfiguredAppLockMock: vi.fn(),
+  getSessionKeyOrThrowMock: vi.fn(),
+}));
 
 vi.mock("../../lib/crypto/aes", () => ({
   decryptBlob: decryptBlobMock,
+  encryptBlob: encryptBlobMock,
+}));
+
+vi.mock("../security/session", () => ({
+  hasConfiguredAppLock: hasConfiguredAppLockMock,
+  getSessionKeyOrThrow: getSessionKeyOrThrowMock,
 }));
 
 function createAttachmentRecord(overrides: Partial<AttachmentRecord> = {}): AttachmentRecord {
@@ -26,6 +37,9 @@ function createAttachmentRecord(overrides: Partial<AttachmentRecord> = {}): Atta
 describe("decryptAttachmentRecord", () => {
   beforeEach(() => {
     decryptBlobMock.mockReset();
+    encryptBlobMock.mockReset();
+    hasConfiguredAppLockMock.mockReset();
+    getSessionKeyOrThrowMock.mockReset();
   });
 
   it("passes plaintext attachments through unchanged", async () => {
@@ -62,5 +76,38 @@ describe("decryptAttachmentRecord", () => {
     await expect(decryptAttachmentRecord(record, null)).rejects.toThrow(
       "Vault is locked. Unlock the vault to access encrypted attachments."
     );
+  });
+
+  it("encrypts plaintext attachments when app lock is configured", async () => {
+    const ciphertext = new Uint8Array([9, 8, 7]).buffer;
+    const key = { id: "vault-key" } as unknown as CryptoKey;
+    const record = createAttachmentRecord({ encrypted: false, encryptionIv: undefined });
+
+    hasConfiguredAppLockMock.mockReturnValue(true);
+    getSessionKeyOrThrowMock.mockReturnValue(key);
+    encryptBlobMock.mockResolvedValue({
+      ciphertext,
+      iv: new Uint8Array([1, 2, 3]),
+    });
+
+    const result = await encryptAttachmentRecordForStorage(record);
+
+    expect(getSessionKeyOrThrowMock).toHaveBeenCalledTimes(1);
+    expect(encryptBlobMock).toHaveBeenCalledWith(record.blob, key);
+    expect(result.encrypted).toBe(true);
+    expect(result.encryptionIv).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
+  it("passes plaintext attachments through when app lock is not configured", async () => {
+    const record = createAttachmentRecord({ encrypted: false, encryptionIv: undefined });
+
+    hasConfiguredAppLockMock.mockReturnValue(false);
+
+    await expect(encryptAttachmentRecordForStorage(record)).resolves.toEqual({
+      ...record,
+      encrypted: false,
+      encryptionIv: undefined,
+    });
+    expect(encryptBlobMock).not.toHaveBeenCalled();
   });
 });

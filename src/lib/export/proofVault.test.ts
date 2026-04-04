@@ -54,11 +54,36 @@ describe("proofVault export evidence mapping", () => {
     vi.setSystemTime(new Date("2026-03-10T16:30:00.000Z"));
   });
 
-  it("records omitted fields for the minimal policy", async () => {
+  it("records omitted fields for the redacted policy", async () => {
     const item = createItem();
     const policy = createProofVaultRedactionPolicy({
       mode: "redacted",
-      includeAttachments: false,
+      includeAttachments: true,
+      includeMetadataAppendix: true,
+    });
+
+    const record = await buildProofVaultEvidenceRecord({
+      item,
+      exportTimestamp: "2026-03-10T16:30:00.000Z",
+      outputFormat: "pdf",
+      redactionPolicy: policy,
+    });
+
+    expect(record.exportContext.redactionPolicy.label).toBe("Redacted");
+    expect(record.omittedFields).toEqual([
+      "originalFilename",
+      "peopleInvolved",
+      "redactions",
+      "sha256",
+      "tags",
+    ]);
+  });
+
+  it("records omitted fields for the minimal policy", async () => {
+    const item = createItem();
+    const policy = createProofVaultRedactionPolicy({
+      mode: "minimal",
+      includeAttachments: true,
       includeMetadataAppendix: true,
     });
 

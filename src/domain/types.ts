@@ -53,7 +53,7 @@ export type EvidenceItem = {
 export type ExportBundle = {
   id: string;
   caseId: string;
-  mode: "full" | "redacted";
+  mode: "full" | "redacted" | "minimal";
   createdAt: string;
   itemIds: string[];
   manifestRef: string;

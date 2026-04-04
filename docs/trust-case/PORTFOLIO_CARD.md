@@ -2,7 +2,7 @@
 
 ## Subhead
 
-A reproducible trust case for an offline-first encrypted evidence app, with a pinned specimen, drift enforcement, and a public release tied to an exact hosted-green commit.
+A reproducible trust case for a local-first encrypted browser evidence app, with a pinned specimen, drift enforcement, and a public release tied to an exact hosted-green commit.
 
 ## Summary
 
@@ -50,7 +50,7 @@ Trust made legible, reproducible, and release-bound.
 
 **ProofVault Trust Case v1.0.1**
 
-Built a reproducible trust case for an offline-first encrypted evidence app, including a pinned specimen, verifier path, drift detection, and hosted-CI-enforced release integrity. Diagnosed and fixed cross-environment specimen drift at source instead of weakening the invariant. Final result: a public trust-case release tied to an exact hosted-green non-debug commit.
+Built a reproducible trust case for a local-first encrypted browser evidence app, including a pinned specimen, verifier path, drift detection, and hosted-CI-enforced release integrity. Diagnosed and fixed cross-environment specimen drift at source instead of weakening the invariant. Final result: a public trust-case release tied to an exact hosted-green non-debug commit.
 
 ## CTA link copy
 

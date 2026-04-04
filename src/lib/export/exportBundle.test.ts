@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CaseFile, EvidenceItem } from "../../domain/types";
 import { appendLedgerEvent } from "../../features/ledger/chain";
-import { listLedgerEntries, upsertExportBundle } from "../../db/queries";
+import { getHydratedAttachmentByEvidenceItemId, listLedgerEntries, upsertExportBundle } from "../../db/queries";
 import { downloadBlobFile } from "../utils/download";
 import {
   buildExportPreview,
@@ -78,6 +78,7 @@ describe("export preview helpers", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-09T12:00:00.000Z"));
+    vi.mocked(getHydratedAttachmentByEvidenceItemId).mockReset();
     vi.mocked(listLedgerEntries).mockResolvedValue([]);
     vi.mocked(upsertExportBundle).mockResolvedValue("export-1");
     vi.mocked(appendLedgerEvent).mockResolvedValue({
@@ -309,5 +310,104 @@ describe("export preview helpers", () => {
     expect(fingerprintText).toMatch(/Manifest Fingerprint: [A-F0-9]{4}(?:-[A-F0-9]{4}){3}/);
     expect(exportManifest.files.fingerprint).toBe("FINGERPRINT.txt");
     expect(exportManifest.files.evidenceProof).toBe("proof-vault-evidence.json");
+  });
+
+  it("strips filenames and hashes from redacted archive artifacts", async () => {
+    vi.useRealTimers();
+
+    const attachmentBlob = new Blob(["image-bytes"], { type: "image/jpeg" });
+    const item = createItem({
+      id: "photo-1",
+      kind: "photo",
+      title: "Hallway photo",
+      fileRef: "att-1",
+      mimeType: "image/jpeg",
+      originalFilename: "hallway-photo.jpg",
+      sha256: "a".repeat(64),
+      peopleInvolved: ["A. Rivera"],
+      tags: ["hallway"],
+    });
+
+    vi.mocked(getHydratedAttachmentByEvidenceItemId).mockResolvedValue({
+      id: "att-1",
+      evidenceItemId: item.id,
+      blob: attachmentBlob,
+      sizeBytes: attachmentBlob.size,
+      mimeType: "image/jpeg",
+      originalFilename: "hallway-photo.jpg",
+      createdAt: "2026-03-09T12:00:00.000Z",
+      encrypted: true,
+      encryptionIv: new Uint8Array([1, 2, 3]),
+    });
+
+    await generateExportPacket(
+      createOptions({
+        items: [item],
+        mode: "redacted",
+        includeAttachments: true,
+        includeMetadataAppendix: true,
+      })
+    );
+
+    const [, archiveBlob] = vi.mocked(downloadBlobFile).mock.calls[0]!;
+    const archive = await JSZip.loadAsync(await archiveBlob.arrayBuffer());
+    const manifestFileName = Object.keys(archive.files).find(
+      (fileName) => fileName.startsWith("manifest-") && fileName.endsWith(".json")
+    );
+
+    expect(manifestFileName).toBeDefined();
+
+    const manifest = JSON.parse(await archive.file(manifestFileName!)!.async("string")) as {
+      items: Array<Record<string, string | undefined>>;
+    };
+    const timelineCsv = await archive.file("timeline.csv")!.async("string");
+    const appendix = await archive.file("metadata-appendix.md")!.async("string");
+
+    expect(Object.keys(archive.files)).toContain("attachments/attachment_photo-1.jpg");
+    expect(manifest.items[0]?.originalFilename).toBeUndefined();
+    expect(manifest.items[0]?.sha256).toBeUndefined();
+    expect(timelineCsv).not.toContain("peopleInvolved");
+    expect(timelineCsv).not.toContain("tags");
+    expect(appendix).not.toContain("SHA256:");
+    expect(appendix).not.toContain("hallway-photo.jpg");
+  });
+
+  it("forces minimal exports to omit attachments and metadata appendix", async () => {
+    vi.useRealTimers();
+
+    await generateExportPacket(
+      createOptions({
+        items: [
+          createItem({
+            id: "minimal-1",
+            title: "Private note",
+            description: "Sensitive note",
+            fileRef: "att-99",
+            originalFilename: "secret.pdf",
+            mimeType: "application/pdf",
+            sha256: "b".repeat(64),
+          }),
+        ],
+        mode: "minimal",
+        includeAttachments: true,
+        includeMetadataAppendix: true,
+      })
+    );
+
+    const [, archiveBlob] = vi.mocked(downloadBlobFile).mock.calls[0]!;
+    const archive = await JSZip.loadAsync(await archiveBlob.arrayBuffer());
+    const manifestFileName = Object.keys(archive.files).find(
+      (fileName) => fileName.startsWith("manifest-") && fileName.endsWith(".json")
+    );
+    const manifest = JSON.parse(await archive.file(manifestFileName!)!.async("string")) as {
+      options: { includeAttachments: boolean; includeMetadataAppendix: boolean };
+      files: { metadataAppendix: string | null };
+    };
+
+    expect(Object.keys(archive.files)).not.toContain("attachments/");
+    expect(archive.file("metadata-appendix.md")).toBeNull();
+    expect(manifest.options.includeAttachments).toBe(false);
+    expect(manifest.options.includeMetadataAppendix).toBe(false);
+    expect(manifest.files.metadataAppendix).toBeNull();
   });
 });

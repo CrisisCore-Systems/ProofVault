@@ -1,9 +1,8 @@
 import { createRandomBase64, decryptJson, deriveAesKeyFromPassphrase, encryptJson } from "./crypto";
+import { validatePassphrasePolicy } from "./passphrasePolicy";
 
 const STORAGE_KEY = "proofvault.security.config.v1";
 const VERIFIER_MARKER = "proofvault-session-unlock";
-const MIN_PASSPHRASE_LENGTH = 10;
-
 export type SecurityPreferences = {
   idleTimeoutMinutes: number;
   lockOnHidden: boolean;
@@ -72,9 +71,7 @@ function normalizePreferences(preferences?: Partial<SecurityPreferences>): Secur
 }
 
 function validatePassphrase(passphrase: string) {
-  if (passphrase.trim().length < MIN_PASSPHRASE_LENGTH) {
-    throw new Error(`Passphrase must be at least ${MIN_PASSPHRASE_LENGTH} characters.`);
-  }
+  validatePassphrasePolicy(passphrase, "vault");
 }
 
 async function deriveVerifiedKey(passphrase: string): Promise<CryptoKey> {

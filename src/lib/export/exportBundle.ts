@@ -14,6 +14,12 @@ import { bakeRedactedImage } from "../utils/redactionBake";
 import { generateCaseReportMarkdown, type CaseReportEvidenceMeta } from "./caseReport";
 import { shortFingerprint } from "./integrityFingerprints";
 import { buildProofVaultEvidenceManifest, createProofVaultRedactionPolicy } from "./proofVault";
+import {
+  createExportSerializationPolicy,
+  resolveSerializedAttachmentName,
+  serializeEvidenceItemForExport,
+  type ExportSerializationPolicy,
+} from "./serializationPolicy";
 
 export type ExportPacketOptions = {
   caseFile: CaseFile;
@@ -127,15 +133,6 @@ function slugify(value: string): string {
     .replaceAll(/^-+|-+$/g, "");
 }
 
-function addSuffixBeforeExtension(fileName: string, suffix: string): string {
-  const extensionStart = fileName.lastIndexOf(".");
-  if (extensionStart <= 0) {
-    return `${fileName}${suffix}`;
-  }
-
-  return `${fileName.slice(0, extensionStart)}${suffix}${fileName.slice(extensionStart)}`;
-}
-
 function escapeCsvCell(value: string): string {
   if (/[",\n]/.test(value)) {
     return `"${value.replaceAll('"', '""')}"`;
@@ -182,7 +179,11 @@ function isWithinDateRange(item: EvidenceItem, startDate?: string, endDate?: str
   return true;
 }
 
-function resolveAttachmentPreview(item: EvidenceItem, options: ExportPacketOptions): Pick<ExportPreviewItem, "attachmentDisposition" | "attachmentReason"> {
+function resolveAttachmentPreview(
+  item: EvidenceItem,
+  options: ExportPacketOptions,
+  policy: ExportSerializationPolicy
+): Pick<ExportPreviewItem, "attachmentDisposition" | "attachmentReason"> {
   if (!item.fileRef) {
     return {
       attachmentDisposition: "not-applicable",
@@ -190,7 +191,7 @@ function resolveAttachmentPreview(item: EvidenceItem, options: ExportPacketOptio
     };
   }
 
-  if (!options.includeAttachments) {
+  if (!policy.includeAttachments) {
     return {
       attachmentDisposition: "omitted",
       attachmentReason: "Attachments excluded by current export settings.",
@@ -241,6 +242,8 @@ function resolveSelectionReason(item: EvidenceItem, options: ExportPacketOptions
 }
 
 export function buildExportPreview(options: ExportPacketOptions): ExportPreviewItem[] {
+  const policy = createExportSerializationPolicy(options);
+
   return [...options.items]
     .sort((left, right) => Date.parse(resolveTimelineTimestamp(left)) - Date.parse(resolveTimelineTimestamp(right)))
     .map((item) => {
@@ -253,13 +256,14 @@ export function buildExportPreview(options: ExportPacketOptions): ExportPreviewI
         timestamp: resolveTimelineTimestamp(item),
         included,
         selectionReason: resolveSelectionReason(item, options),
-        ...resolveAttachmentPreview(item, options),
+        ...resolveAttachmentPreview(item, options, policy),
       };
     });
 }
 
 export function buildExportPreviewManifest(options: ExportPacketOptions): ExportPreviewManifest {
   const items = buildExportPreview(options);
+  const policy = createExportSerializationPolicy(options);
 
   return {
     schemaVersion: 1,
@@ -273,8 +277,8 @@ export function buildExportPreviewManifest(options: ExportPacketOptions): Export
     },
     options: {
       mode: options.mode,
-      includeAttachments: options.includeAttachments,
-      includeMetadataAppendix: options.includeMetadataAppendix,
+      includeAttachments: policy.includeAttachments,
+      includeMetadataAppendix: policy.includeMetadataAppendix,
       startDate: options.startDate ?? null,
       endDate: options.endDate ?? null,
     },
@@ -387,7 +391,7 @@ function buildTimelineMarkdown(caseFile: CaseFile, timelineEvents: TimelineEvent
   return ["# Timeline", "", `Case: ${caseFile.title}`, "", ...eventLines].join("\n");
 }
 
-function buildTimelineCsv(items: EvidenceItem[]): string {
+function buildTimelineCsv(items: EvidenceItem[], policy: ExportSerializationPolicy): string {
   const header = [
     "timestamp",
     "id",
@@ -399,63 +403,72 @@ function buildTimelineCsv(items: EvidenceItem[]): string {
     "includeInExport",
     "redactionStatus",
     "dateCertainty",
-    "peopleInvolved",
-    "tags",
+    ...(policy.allowsPeopleInvolved ? ["peopleInvolved"] : []),
+    ...(policy.allowsTags ? ["tags"] : []),
   ];
 
-  const rows = items.map((item) => [
-    resolveTimelineTimestamp(item),
-    item.id,
-    item.title,
-    item.kind,
-    item.recordedAt,
-    item.occurredAt ?? "",
-    item.caseId ?? "",
-    String(item.includeInExport),
-    item.redactionStatus,
-    item.dateCertainty,
-    item.peopleInvolved?.join(" | ") ?? "",
-    item.tags?.join(" | ") ?? "",
-  ]);
+  const rows = items.map((item) => {
+    const serialized = serializeEvidenceItemForExport(item, policy);
+
+    return [
+      resolveTimelineTimestamp(serialized),
+      serialized.id,
+      serialized.title,
+      serialized.kind,
+      serialized.recordedAt,
+      serialized.occurredAt ?? "",
+      serialized.caseId ?? "",
+      String(serialized.includeInExport),
+      serialized.redactionStatus,
+      serialized.dateCertainty,
+      ...(policy.allowsPeopleInvolved ? [serialized.peopleInvolved?.join(" | ") ?? ""] : []),
+      ...(policy.allowsTags ? [serialized.tags?.join(" | ") ?? ""] : []),
+    ];
+  });
 
   return [header, ...rows]
     .map((row) => row.map((value) => escapeCsvCell(value)).join(","))
     .join("\n");
 }
 
-function buildManifestBase(item: EvidenceItem) {
+function buildManifestBase(item: EvidenceItem, policy: ExportSerializationPolicy) {
+  const serialized = serializeEvidenceItemForExport(item, policy);
+
   return {
-    id: item.id,
-    title: item.title,
-    kind: item.kind,
-    timestamp: resolveTimelineTimestamp(item),
-    recordedAt: item.recordedAt,
-    occurredAt: item.occurredAt,
-    includeInExport: item.includeInExport,
-    redactionStatus: item.redactionStatus,
-    dateCertainty: item.dateCertainty,
-    originalFilename: item.originalFilename,
-    mimeType: item.mimeType,
-    sha256: item.sha256,
+    id: serialized.id,
+    title: serialized.title,
+    kind: serialized.kind,
+    timestamp: resolveTimelineTimestamp(serialized),
+    recordedAt: serialized.recordedAt,
+    occurredAt: serialized.occurredAt,
+    includeInExport: serialized.includeInExport,
+    redactionStatus: serialized.redactionStatus,
+    dateCertainty: serialized.dateCertainty,
+    originalFilename: serialized.originalFilename,
+    mimeType: serialized.mimeType,
+    sha256: serialized.sha256,
   };
 }
 
-function buildBaseEvidenceMeta(item: EvidenceItem): CaseReportEvidenceMeta {
+function buildBaseEvidenceMeta(item: EvidenceItem, policy: ExportSerializationPolicy): CaseReportEvidenceMeta {
+  const serialized = serializeEvidenceItemForExport(item, policy);
+
   return {
-    evidence: item,
+    evidence: serialized,
     sizeBytes: undefined,
-    mimeType: item.mimeType,
-    sha256: item.sha256,
+    mimeType: serialized.mimeType,
+    sha256: serialized.sha256,
   };
 }
 
 function buildManifestWithoutAttachment(
   item: EvidenceItem,
+  policy: ExportSerializationPolicy,
   attachmentStatus: "omitted" | "missing" | "not-applicable",
   omissionReason: string
 ): ManifestItem {
   return {
-    ...buildManifestBase(item),
+    ...buildManifestBase(item, policy),
     attachmentStatus,
     omissionReason,
   };
@@ -484,6 +497,7 @@ function shouldOmitAttachmentForRedaction(item: EvidenceItem, attachmentMimeType
 type ProcessExportItemParams = {
   item: EvidenceItem;
   options: ExportPacketOptions;
+  policy: ExportSerializationPolicy;
   attachmentsFolder?: JSZip | null;
   usedAttachmentNames: Set<string>;
   caseAttachmentIds: Set<string>;
@@ -498,25 +512,27 @@ type ProcessExportItemResult = {
 async function processExportItem({
   item,
   options,
+  policy,
   attachmentsFolder,
   usedAttachmentNames,
   caseAttachmentIds,
   zipEntryDate,
 }: ProcessExportItemParams & { zipEntryDate: Date }): Promise<ProcessExportItemResult> {
-  const baseMeta = buildBaseEvidenceMeta(item);
+  const serializedItem = serializeEvidenceItemForExport(item, policy);
+  const baseMeta = buildBaseEvidenceMeta(item, policy);
 
   if (!item.fileRef) {
     return {
       evidenceMeta: baseMeta,
-      manifestItem: buildManifestWithoutAttachment(item, "not-applicable", "no-attachment"),
+      manifestItem: buildManifestWithoutAttachment(item, policy, "not-applicable", "no-attachment"),
       exportedAttachment: false,
     };
   }
 
-  if (!options.includeAttachments) {
+  if (!policy.includeAttachments) {
     return {
       evidenceMeta: baseMeta,
-      manifestItem: buildManifestWithoutAttachment(item, "omitted", "attachments-disabled"),
+      manifestItem: buildManifestWithoutAttachment(item, policy, "omitted", "attachments-disabled"),
       exportedAttachment: false,
     };
   }
@@ -525,7 +541,7 @@ async function processExportItem({
   if (!attachment) {
     return {
       evidenceMeta: baseMeta,
-      manifestItem: buildManifestWithoutAttachment(item, "missing", "attachment-missing"),
+      manifestItem: buildManifestWithoutAttachment(item, policy, "missing", "attachment-missing"),
       exportedAttachment: false,
     };
   }
@@ -537,14 +553,14 @@ async function processExportItem({
   if (omitReason) {
     return {
       evidenceMeta: baseMeta,
-      manifestItem: buildManifestWithoutAttachment(item, "omitted", omitReason),
+      manifestItem: buildManifestWithoutAttachment(item, policy, "omitted", omitReason),
       exportedAttachment: false,
     };
   }
 
   let outputBlob = attachment.blob;
   let outputMimeType = attachmentMimeType;
-  let outputSha256 = item.sha256;
+  let outputSha256 = serializedItem.sha256;
   let isRedactedDerivative = false;
 
   const hasImageRedactions =
@@ -556,29 +572,34 @@ async function processExportItem({
     const baked = await bakeRedactedImage(attachment.blob, item.redactions ?? []);
     outputBlob = baked.bakedBlob;
     outputMimeType = baked.bakedBlob.type || "image/png";
-    outputSha256 = baked.bakedHash;
+    outputSha256 = policy.allowsSha256 ? baked.bakedHash : undefined;
     isRedactedDerivative = true;
   }
 
-  const originalName = sanitizeFileSegment(
-    attachment.originalFilename || item.originalFilename || item.title || item.id
+  const outputName = sanitizeFileSegment(
+    resolveSerializedAttachmentName({
+      item,
+      attachment,
+      attachmentMimeType: outputMimeType,
+      policy,
+      isRedactedDerivative,
+    })
   );
-  const outputName = isRedactedDerivative ? addSuffixBeforeExtension(originalName, "_redacted") : originalName;
   const finalName = withUniqueName(outputName, usedAttachmentNames);
 
   attachmentsFolder?.file(finalName, await outputBlob.arrayBuffer(), { date: zipEntryDate });
 
   return {
     evidenceMeta: {
-      evidence: item,
+      evidence: serializedItem,
       sizeBytes: outputBlob.size,
       mimeType: outputMimeType,
       sha256: outputSha256,
       isRedactedDerivative,
-      originalSha256: item.sha256,
+      originalSha256: policy.allowsSha256 ? serializedItem.sha256 : undefined,
     },
     manifestItem: {
-      ...buildManifestBase(item),
+      ...buildManifestBase(item, policy),
       mimeType: outputMimeType,
       sha256: outputSha256,
       attachmentPath: `attachments/${finalName}`,
@@ -589,6 +610,7 @@ async function processExportItem({
 }
 
 export async function generateExportPacket(options: ExportPacketOptions): Promise<ExportPacketResult> {
+  const policy = createExportSerializationPolicy(options);
   const exportedAt = new Date().toISOString();
   const zipEntryDate = createStableZipEntryDate(exportedAt);
   const selectedItems = options.items
@@ -600,12 +622,12 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
   }
 
   const zip = new JSZip();
-  if (options.includeAttachments) {
+  if (policy.includeAttachments) {
     zip.file("attachments/", "", { dir: true, date: zipEntryDate });
   }
 
-  const attachmentsFolder = options.includeAttachments ? zip.folder("attachments") : undefined;
-  if (options.includeAttachments && !attachmentsFolder) {
+  const attachmentsFolder = policy.includeAttachments ? zip.folder("attachments") : undefined;
+  if (policy.includeAttachments && !attachmentsFolder) {
     throw new Error("Unable to initialize attachments folder in export archive.");
   }
 
@@ -617,6 +639,7 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
       processExportItem({
         item,
         options,
+        policy,
         attachmentsFolder,
         usedAttachmentNames,
         caseAttachmentIds,
@@ -634,7 +657,7 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
   const manifestRef = `manifest-${stamp}.json`;
   const archiveRef = `proofvault-${slug}-${options.mode}-${stamp}.zip`;
 
-  const caseLedger = options.includeMetadataAppendix
+  const caseLedger = policy.includeMetadataAppendix
     ? (await listLedgerEntries()).filter(
         (entry) =>
           entry.caseId === options.caseFile.id ||
@@ -654,8 +677,8 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
     },
     options: {
       mode: options.mode,
-      includeAttachments: options.includeAttachments,
-      includeMetadataAppendix: options.includeMetadataAppendix,
+      includeAttachments: policy.includeAttachments,
+      includeMetadataAppendix: policy.includeMetadataAppendix,
       startDate: options.startDate ?? null,
       endDate: options.endDate ?? null,
     },
@@ -672,8 +695,8 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
       caseSummary: "case-summary.txt",
       fingerprint: "FINGERPRINT.txt",
       evidenceProof: "proof-vault-evidence.json",
-      metadataAppendix: options.includeMetadataAppendix ? "metadata-appendix.md" : null,
-      ledgerAudit: options.includeMetadataAppendix && caseLedger.length > 0 ? "ledger-audit.json" : null,
+      metadataAppendix: policy.includeMetadataAppendix ? "metadata-appendix.md" : null,
+      ledgerAudit: policy.includeMetadataAppendix && caseLedger.length > 0 ? "ledger-audit.json" : null,
     },
     items: manifestItems,
   };
@@ -684,15 +707,30 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
     exportTimestamp: exportedAt,
     outputFormat: "zip",
     redactionPolicy: createProofVaultRedactionPolicy({
-      mode: options.mode,
-      includeAttachments: options.includeAttachments,
-      includeMetadataAppendix: options.includeMetadataAppendix,
+      mode: policy.mode,
+      includeAttachments: policy.includeAttachments,
+      includeMetadataAppendix: policy.includeMetadataAppendix,
     }),
   });
 
-  zip.file("case-summary.txt", buildCaseSummaryText(options.caseFile, exportedAt, options, selectedItems.length, exportedAttachmentCount), { date: zipEntryDate });
+  zip.file(
+    "case-summary.txt",
+    buildCaseSummaryText(
+      options.caseFile,
+      exportedAt,
+      {
+        ...options,
+        mode: policy.mode,
+        includeAttachments: policy.includeAttachments,
+        includeMetadataAppendix: policy.includeMetadataAppendix,
+      },
+      selectedItems.length,
+      exportedAttachmentCount
+    ),
+    { date: zipEntryDate }
+  );
   zip.file("timeline.md", buildTimelineMarkdown(options.caseFile, timelineEvents), { date: zipEntryDate });
-  zip.file("timeline.csv", buildTimelineCsv(selectedItems), { date: zipEntryDate });
+  zip.file("timeline.csv", buildTimelineCsv(selectedItems, policy), { date: zipEntryDate });
   zip.file(manifestRef, JSON.stringify(manifest, null, 2), { date: zipEntryDate });
   zip.file(
     "FINGERPRINT.txt",
@@ -706,7 +744,7 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
   );
   zip.file("proof-vault-evidence.json", JSON.stringify(proofManifest, null, 2), { date: zipEntryDate });
 
-  if (options.includeMetadataAppendix) {
+  if (policy.includeMetadataAppendix) {
     zip.file("metadata-appendix.md", generateCaseReportMarkdown(options.caseFile, timelineEvents, evidenceMeta), { date: zipEntryDate });
 
     if (caseLedger.length > 0) {
@@ -749,8 +787,8 @@ export async function generateExportPacket(options: ExportPacketOptions): Promis
       mode: options.mode,
       itemCount: selectedItems.length,
       attachmentCount: exportedAttachmentCount,
-      includeAttachments: options.includeAttachments,
-      includeMetadataAppendix: options.includeMetadataAppendix,
+      includeAttachments: policy.includeAttachments,
+      includeMetadataAppendix: policy.includeMetadataAppendix,
       proofRecordCount: proofManifest.recordCount,
       proofIntegritySeal: proofManifest.integritySeal,
       startDate: options.startDate ?? null,

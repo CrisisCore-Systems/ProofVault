@@ -126,6 +126,13 @@ export function useExportBuilder() {
     });
   }, [selectedCaseId, mode, startDate, endDate, includeAttachments, includeMetadataAppendix]);
 
+  useEffect(() => {
+    if (mode === "minimal") {
+      setIncludeAttachments(false);
+      setIncludeMetadataAppendix(false);
+    }
+  }, [mode]);
+
   const selectedCase = useMemo(
     () => cases.find((caseFile) => caseFile.id === selectedCaseId),
     [cases, selectedCaseId]

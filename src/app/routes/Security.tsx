@@ -1,10 +1,15 @@
-import { useState, type ComponentProps } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import { SectionHeader } from "../../components/ui/SectionHeader";
 import { useAppLock } from "../../features/security/AppLock";
+import { buildPassphrasePolicyFeedback } from "../../features/security/passphrasePolicy";
 import {
   exportEncryptedBackup,
   importEncryptedBackup,
+  listRollbackSnapshots,
   previewEncryptedBackup,
+  restoreRollbackSnapshot,
+  type RollbackSnapshotSummary,
+  type StagedVaultRestore,
   type VaultBackupPreview,
 } from "../../features/security/backup";
 
@@ -67,6 +72,7 @@ type RotationCardProps = {
 };
 
 function RotationCard({ onRotatePassphrase }: Readonly<RotationCardProps>) {
+  const passphraseFeedback = buildPassphrasePolicyFeedback("vault");
   const [currentPassphrase, setCurrentPassphrase] = useState("");
   const [nextPassphrase, setNextPassphrase] = useState("");
   const [confirmPassphrase, setConfirmPassphrase] = useState("");
@@ -173,14 +179,16 @@ function RotationCard({ onRotatePassphrase }: Readonly<RotationCardProps>) {
       </form>
 
       <div className="rounded-md border border-zinc-800 bg-zinc-950/80 px-3 py-3 text-xs text-zinc-400">
-        <p>Write the new passphrase down securely before applying it.</p>
-        <p className="mt-1">There is no recovery path if the passphrase is lost.</p>
+        <p>{passphraseFeedback.guidance[0]}</p>
+        <p className="mt-1">{passphraseFeedback.guidance[2]}</p>
+        <p className="mt-1 text-amber-300">{passphraseFeedback.warnings[0]}</p>
       </div>
     </section>
   );
 }
 
 function BackupExportCard() {
+  const passphraseFeedback = buildPassphrasePolicyFeedback("backup");
   const [backupPassphrase, setBackupPassphrase] = useState("");
   const [backupConfirmPassphrase, setBackupConfirmPassphrase] = useState("");
   const [backupError, setBackupError] = useState<string | null>(null);
@@ -267,6 +275,12 @@ function BackupExportCard() {
           {exportingBackup ? "Preparing..." : "Download Backup"}
         </button>
       </div>
+
+      <div className="rounded-md border border-zinc-800 bg-zinc-900/70 px-3 py-3 text-xs text-zinc-400">
+        <p>{passphraseFeedback.guidance[0]}</p>
+        <p className="mt-1">{passphraseFeedback.guidance[1]}</p>
+        <p className="mt-1 text-amber-300">{passphraseFeedback.warnings[0]}</p>
+      </div>
     </form>
   );
 }
@@ -279,6 +293,7 @@ function BackupRestoreCard() {
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restoreWarning, setRestoreWarning] = useState<string | null>(null);
   const [restorePreview, setRestorePreview] = useState<VaultBackupPreview | null>(null);
+  const [stagedRestore, setStagedRestore] = useState<StagedVaultRestore | null>(null);
   const [previewingBackup, setPreviewingBackup] = useState(false);
   const [importingBackup, setImportingBackup] = useState(false);
 
@@ -286,6 +301,7 @@ function BackupRestoreCard() {
     setRestoreError(null);
     setRestoreWarning(null);
     setRestorePreview(null);
+    setStagedRestore(null);
   };
 
   const handleBackupPreview: ComponentProps<"form">["onSubmit"] = (event) => {
@@ -306,7 +322,7 @@ function BackupRestoreCard() {
           includeExportBundles: restoreExportBundles,
         });
         setRestorePreview(preview);
-        setRestoreWarning("Backup preview verified. Restoring will overwrite the current local vault.");
+        setRestoreWarning("Backup preview verified. Restores now stage into a temporary namespace before promotion.");
       } catch (error) {
         setRestoreError(error instanceof Error ? error.message : "Unable to preview encrypted backup.");
       } finally {
@@ -329,14 +345,36 @@ function BackupRestoreCard() {
       setImportingBackup(true);
 
       try {
+        if (!stagedRestore) {
+          const result = await importEncryptedBackup(restoreFile, restorePassphrase, {
+            includeAttachments: restoreAttachments,
+            includeExportBundles: restoreExportBundles,
+          });
+
+          if (result.status !== "staged") {
+            throw new Error("Expected restore staging before promotion.");
+          }
+
+          setStagedRestore(result.stagedRestore);
+          setRestoreWarning("Restore staged in a temporary namespace. Review the diff and confirm again to promote it into the live vault.");
+          return;
+        }
+
         const result = await importEncryptedBackup(restoreFile, restorePassphrase, {
           includeAttachments: restoreAttachments,
           includeExportBundles: restoreExportBundles,
+          confirmationToken: stagedRestore.stageId,
         });
+
+        if (result.status !== "restored") {
+          throw new Error("Expected staged restore promotion to complete.");
+        }
+
         setRestoreWarning(
-          `Vault restored (${result.cases} cases, ${result.evidenceItems} evidence items, ${result.attachments} attachments, ${result.exportBundles} export bundles). The vault is now locked; unlock with the restored vault passphrase.`
+          `Vault restored (${result.cases} cases, ${result.evidenceItems} evidence items, ${result.attachments} attachments, ${result.exportBundles} export bundles). Rollback snapshot ${result.rollbackSnapshotId} was captured automatically. The vault is now locked; unlock with the restored vault passphrase.`
         );
         setRestorePreview(null);
+        setStagedRestore(null);
       } catch (error) {
         setRestoreError(error instanceof Error ? error.message : "Unable to import encrypted backup.");
       } finally {
@@ -352,7 +390,7 @@ function BackupRestoreCard() {
       <div>
         <h4 className="text-sm font-semibold text-zinc-100">Restore encrypted backup</h4>
         <p className="mt-1 text-xs text-zinc-400">
-          Replaces the current local vault with the selected backup, then locks the app.
+          Stages the backup locally, shows the diff, then requires a second confirmation before promotion.
         </p>
       </div>
 
@@ -432,22 +470,32 @@ function BackupRestoreCard() {
             </p>
             <ul className="mt-2 space-y-1 text-emerald-100">
               <li>
-                Cases: overwrite {restorePreview.conflicts.cases.overlapping}, add {restorePreview.conflicts.cases.incomingOnly}
+                Cases: overwrite {restorePreview.diff.cases.overlapping}, add {restorePreview.diff.cases.incomingOnly}, remove {restorePreview.diff.cases.currentOnly}
               </li>
               <li>
-                Evidence: overwrite {restorePreview.conflicts.evidenceItems.overlapping}, add {restorePreview.conflicts.evidenceItems.incomingOnly}
+                Evidence: overwrite {restorePreview.diff.evidenceItems.overlapping}, add {restorePreview.diff.evidenceItems.incomingOnly}, remove {restorePreview.diff.evidenceItems.currentOnly}
               </li>
               <li>
-                Attachments: {restorePreview.options.includeAttachments ? `overwrite ${restorePreview.conflicts.attachments.overlapping}, add ${restorePreview.conflicts.attachments.incomingOnly}` : "skipped"}
+                Attachments: {restorePreview.options.includeAttachments ? `overwrite ${restorePreview.diff.attachments.overlapping}, add ${restorePreview.diff.attachments.incomingOnly}, remove ${restorePreview.diff.attachments.currentOnly}` : "skipped"}
               </li>
               <li>
-                Export bundles: {restorePreview.options.includeExportBundles ? `overwrite ${restorePreview.conflicts.exportBundles.overlapping}, add ${restorePreview.conflicts.exportBundles.incomingOnly}` : "skipped"}
+                Export bundles: {restorePreview.options.includeExportBundles ? `overwrite ${restorePreview.diff.exportBundles.overlapping}, add ${restorePreview.diff.exportBundles.incomingOnly}, remove ${restorePreview.diff.exportBundles.currentOnly}` : "skipped"}
               </li>
               <li>
-                Ledger: overwrite {restorePreview.conflicts.ledger.overlapping}, add {restorePreview.conflicts.ledger.incomingOnly}
+                Ledger: overwrite {restorePreview.diff.ledger.overlapping}, add {restorePreview.diff.ledger.incomingOnly}, remove {restorePreview.diff.ledger.currentOnly}
               </li>
             </ul>
           </div>
+        </div>
+      ) : null}
+
+      {stagedRestore ? (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-3 text-xs text-amber-100">
+          <p className="font-semibold text-amber-200">Restore staged</p>
+          <p className="mt-1">Stage ID: {stagedRestore.stageId}</p>
+          <p>Staged at: {stagedRestore.stagedAt}</p>
+          <p className="mt-1 break-all">Snapshot SHA-256: {stagedRestore.snapshotSha256}</p>
+          <p className="mt-2">A pre-restore rollback snapshot will be captured automatically if you confirm promotion.</p>
         </div>
       ) : null}
 
@@ -462,7 +510,7 @@ function BackupRestoreCard() {
       ) : null}
 
       <div className="rounded-md border border-zinc-800 bg-zinc-900/70 px-3 py-3 text-xs text-zinc-400">
-        Import overwrites the current local vault contents on this device. Preview first to verify record counts and integrity.
+        Restore is non-destructive by default. Preview first, then stage the backup, then confirm promotion only after checking the diff.
       </div>
 
       <div className="flex justify-end gap-2">
@@ -479,10 +527,137 @@ function BackupRestoreCard() {
           disabled={importingBackup || restorePreview === null}
           className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {importingBackup ? "Restoring..." : "Restore Backup"}
+          {importingBackup ? (stagedRestore ? "Promoting..." : "Staging...") : stagedRestore ? "Confirm Restore" : "Stage Restore"}
         </button>
       </div>
     </form>
+  );
+}
+
+function RollbackSnapshotsCard() {
+  const [rollbackSnapshots, setRollbackSnapshots] = useState<RollbackSnapshotSummary[]>([]);
+  const [loadingSnapshots, setLoadingSnapshots] = useState(true);
+  const [rollbackError, setRollbackError] = useState<string | null>(null);
+  const [rollbackMessage, setRollbackMessage] = useState<string | null>(null);
+  const [armedRollbackId, setArmedRollbackId] = useState<string | null>(null);
+  const [restoringRollbackId, setRestoringRollbackId] = useState<string | null>(null);
+
+  const loadRollbackSnapshots = async () => {
+    setLoadingSnapshots(true);
+
+    try {
+      const snapshots = await listRollbackSnapshots();
+      setRollbackSnapshots(snapshots);
+    } catch (error) {
+      setRollbackError(error instanceof Error ? error.message : "Unable to load rollback snapshots.");
+    } finally {
+      setLoadingSnapshots(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadRollbackSnapshots();
+  }, []);
+
+  const handleRollbackRestore = (snapshotId: string) => {
+    setRollbackError(null);
+    setRollbackMessage(null);
+
+    if (armedRollbackId !== snapshotId) {
+      setArmedRollbackId(snapshotId);
+      setRollbackMessage(
+        "Rollback armed. Click the same restore button again to replace the live vault from that snapshot. A fresh rollback snapshot will be captured first."
+      );
+      return;
+    }
+
+    const run = async () => {
+      setRestoringRollbackId(snapshotId);
+
+      try {
+        const result = await restoreRollbackSnapshot(snapshotId);
+        setRollbackMessage(
+          `Rollback restored (${result.cases} cases, ${result.evidenceItems} evidence items, ${result.attachments} attachments, ${result.exportBundles} export bundles). Fresh rollback snapshot ${result.rollbackSnapshotId} was captured before promotion. The vault is now locked; unlock with the restored vault passphrase.`
+        );
+        setArmedRollbackId(null);
+        await loadRollbackSnapshots();
+      } catch (error) {
+        setRollbackError(error instanceof Error ? error.message : "Unable to restore rollback snapshot.");
+      } finally {
+        setRestoringRollbackId(null);
+      }
+    };
+
+    void run();
+  };
+
+  return (
+    <section className="rounded-md border border-zinc-800 bg-zinc-950/80 p-4 lg:col-span-2">
+      <div>
+        <h4 className="text-sm font-semibold text-zinc-100">Rollback snapshots</h4>
+        <p className="mt-1 text-xs text-zinc-400">
+          Pre-restore checkpoints are captured locally before a staged backup or rollback snapshot is promoted into the live vault.
+        </p>
+      </div>
+
+      {rollbackError ? (
+        <p className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          {rollbackError}
+        </p>
+      ) : null}
+
+      {rollbackMessage ? (
+        <p className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          {rollbackMessage}
+        </p>
+      ) : null}
+
+      {loadingSnapshots ? (
+        <p className="mt-3 text-xs text-zinc-400">Loading rollback snapshots...</p>
+      ) : rollbackSnapshots.length === 0 ? (
+        <p className="mt-3 rounded-md border border-zinc-800 bg-zinc-900/70 px-3 py-3 text-xs text-zinc-400">
+          No rollback snapshots captured yet. They appear after a restore promotion replaces the live vault.
+        </p>
+      ) : (
+        <div className="mt-3 space-y-3">
+          {rollbackSnapshots.map((snapshot) => {
+            const isArmed = armedRollbackId === snapshot.id;
+            const isRestoring = restoringRollbackId === snapshot.id;
+
+            return (
+              <div
+                key={snapshot.id}
+                className="rounded-md border border-zinc-800 bg-zinc-900/70 px-3 py-3 text-xs text-zinc-300"
+              >
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-1">
+                    <p className="font-semibold text-zinc-100">Captured {snapshot.createdAt}</p>
+                    <p>Source vault export timestamp: {snapshot.exportedAt}</p>
+                    <p>
+                      Cases {snapshot.counts.cases} · Evidence {snapshot.counts.evidenceItems} · Attachments {snapshot.counts.attachments} · Export bundles {snapshot.counts.exportBundles}
+                    </p>
+                    <p className="break-all text-zinc-500">Snapshot SHA-256: {snapshot.snapshotSha256}</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRollbackRestore(snapshot.id)}
+                    disabled={restoringRollbackId !== null}
+                    className={`rounded-md px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${
+                      isArmed
+                        ? "border border-red-500/40 bg-red-500/10 text-red-200 hover:bg-red-500/20"
+                        : "border border-zinc-700 bg-zinc-950 text-zinc-200 hover:bg-zinc-800"
+                    }`}
+                  >
+                    {isRestoring ? "Restoring..." : isArmed ? "Confirm Rollback" : "Arm Rollback"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -532,6 +707,7 @@ export function Security() {
           <div className="grid gap-4 lg:grid-cols-2">
             <BackupExportCard />
             <BackupRestoreCard />
+            <RollbackSnapshotsCard />
           </div>
         </section>
       </div>

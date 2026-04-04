@@ -10,7 +10,7 @@ This case study explains what was built, why it matters, and what the release pr
 
 ## The problem
 
-ProofVault is an offline-first encrypted evidence and incident capture application built for unstable, privacy-sensitive, and high-stress conditions. A system like that carries a higher burden than ordinary product software.
+ProofVault is a local-first encrypted browser application built for unstable, privacy-sensitive, and high-stress conditions. A system like that carries a higher burden than ordinary product software.
 
 It is not enough to say:
 

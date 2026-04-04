@@ -1,6 +1,6 @@
 # ProofVault
 
-ProofVault is an offline-first encrypted evidence and incident capture app for people documenting disputes, harm, or institutional conflict under unstable conditions.
+ProofVault is a local-first encrypted browser app for people documenting disputes, harm, or institutional conflict under unstable conditions.
 
 ## Product stance
 

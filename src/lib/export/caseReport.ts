@@ -54,7 +54,7 @@ function evidenceIndexLine(index: number, meta: CaseReportEvidenceMeta): string 
     `   Type: ${evidence.kind}`,
     `   MIME: ${mimeType}`,
     `   Size: ${formatSize(meta.sizeBytes)}`,
-    `   SHA256: ${sha256}`,
+    ...(sha256 === "-" ? [] : [`   SHA256: ${sha256}`]),
   ].join("\n");
 }
 

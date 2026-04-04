@@ -37,14 +37,24 @@ export function readStoredExportPreferences(): StoredExportPreferences | null {
 export function normalizeStoredExportPreferences(
   preferences?: Partial<StoredExportPreferences> | null
 ): StoredExportPreferences {
+  const normalizedMode =
+    preferences?.mode === "full" || preferences?.mode === "redacted" || preferences?.mode === "minimal"
+      ? preferences.mode
+      : DEFAULT_EXPORT_PREFERENCES.mode;
+
   return {
     selectedCaseId: preferences?.selectedCaseId ?? DEFAULT_EXPORT_PREFERENCES.selectedCaseId,
-    mode: preferences?.mode === "full" ? "full" : DEFAULT_EXPORT_PREFERENCES.mode,
+    mode: normalizedMode,
     startDate: preferences?.startDate ?? DEFAULT_EXPORT_PREFERENCES.startDate,
     endDate: preferences?.endDate ?? DEFAULT_EXPORT_PREFERENCES.endDate,
-    includeAttachments: preferences?.includeAttachments ?? DEFAULT_EXPORT_PREFERENCES.includeAttachments,
+    includeAttachments:
+      normalizedMode === "minimal"
+        ? false
+        : (preferences?.includeAttachments ?? DEFAULT_EXPORT_PREFERENCES.includeAttachments),
     includeMetadataAppendix:
-      preferences?.includeMetadataAppendix ?? DEFAULT_EXPORT_PREFERENCES.includeMetadataAppendix,
+      normalizedMode === "minimal"
+        ? false
+        : (preferences?.includeMetadataAppendix ?? DEFAULT_EXPORT_PREFERENCES.includeMetadataAppendix),
   };
 }
 

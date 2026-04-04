@@ -2,7 +2,7 @@
 
 ## Scope
 
-ProofVault is an offline-first encrypted evidence and incident capture application intended for unstable, high-stress, and privacy-sensitive conditions.
+ProofVault is a local-first encrypted browser application intended for unstable, high-stress, and privacy-sensitive conditions.
 
 This trust case is limited to the behavior implemented in the current repository. It does not claim protections that depend on future infrastructure, external attestations, or unpublished hardening work.
 

@@ -20,6 +20,7 @@ import {
   unlockSession,
   updateSecurityPreferences,
 } from "./session";
+import { buildPassphrasePolicyFeedback } from "./passphrasePolicy";
 import { migrateExistingSensitiveData } from "./migration";
 import { rotatePassphrase as rotatePassphraseForVault } from "./rotation";
 
@@ -61,6 +62,7 @@ function VaultAccessPanel({ status, busy, onSetup, onUnlock }: Readonly<VaultAcc
   const [passphrase, setPassphrase] = useState("");
   const [confirmPassphrase, setConfirmPassphrase] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const setupFeedback = buildPassphrasePolicyFeedback("vault");
   const title = status === "setup" ? "Create vault passphrase" : "Unlock vault";
   const description =
     status === "setup"
@@ -153,6 +155,13 @@ function VaultAccessPanel({ status, busy, onSetup, onUnlock }: Readonly<VaultAcc
         <div className="mt-4 rounded-md border border-zinc-800 bg-zinc-950/80 px-3 py-3 text-xs text-zinc-400">
           <p>Protected at rest: evidence descriptions, locations, people, tags, and case descriptions.</p>
           <p className="mt-1">The passphrase is not sent anywhere and is not recoverable from local storage.</p>
+          {status === "setup" ? (
+            <>
+              <p className="mt-2">{setupFeedback.guidance[0]}</p>
+              <p className="mt-1">{setupFeedback.guidance[1]}</p>
+              <p className="mt-1 text-amber-300">{setupFeedback.warnings[0]}</p>
+            </>
+          ) : null}
         </div>
       </div>
     </div>

@@ -69,10 +69,13 @@ describe("export preferences", () => {
     });
   });
 
-  it("only preserves full mode explicitly and falls back otherwise", () => {
+  it("preserves all supported export modes", () => {
     expect(normalizeStoredExportPreferences({ mode: "full" })).toMatchObject({ mode: "full" });
-    expect(normalizeStoredExportPreferences({ mode: "redacted" })).toMatchObject({
-      mode: DEFAULT_EXPORT_PREFERENCES.mode,
+    expect(normalizeStoredExportPreferences({ mode: "redacted" })).toMatchObject({ mode: "redacted" });
+    expect(normalizeStoredExportPreferences({ mode: "minimal" })).toMatchObject({
+      mode: "minimal",
+      includeAttachments: false,
+      includeMetadataAppendix: false,
     });
   });
 });
