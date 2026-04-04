@@ -11,7 +11,7 @@ import {
 import { createRandomBase64, decryptJson, deriveAesKeyFromPassphrase, encryptJson } from "./crypto";
 import { decryptCaseFileFromStorageWithKey, decryptEvidenceItemFromStorageWithKey } from "./storage";
 
-type SerializedAttachmentRecord = Omit<AttachmentRecord, "blob" | "encryptionIv"> & {
+export type SerializedAttachmentRecord = Omit<AttachmentRecord, "blob" | "encryptionIv"> & {
   blobBase64: string;
   encryptionIvBase64?: string;
 };
@@ -153,14 +153,37 @@ function base64ToBytes(value: string): Uint8Array {
   return bytes;
 }
 
-async function blobToBase64(blob: Blob): Promise<string> {
-  return bytesToBase64(new Uint8Array(await blob.arrayBuffer()));
+export async function serializeAttachmentForBackup(attachment: AttachmentRecord): Promise<SerializedAttachmentRecord> {
+  return {
+    id: attachment.id,
+    evidenceItemId: attachment.evidenceItemId,
+    blobBase64: bytesToBase64(new Uint8Array(await attachment.blob.arrayBuffer())),
+    sizeBytes: attachment.sizeBytes,
+    mimeType: attachment.mimeType,
+    originalFilename: attachment.originalFilename,
+    createdAt: attachment.createdAt,
+    updatedAt: attachment.updatedAt,
+    encrypted: attachment.encrypted,
+    encryptionIvBase64: attachment.encryptionIv ? bytesToBase64(attachment.encryptionIv) : undefined,
+  };
 }
 
-function base64ToBlob(value: string, mimeType: string): Blob {
-  const bytes = base64ToBytes(value);
+export function deserializeAttachmentFromBackup(serialized: SerializedAttachmentRecord): AttachmentRecord {
+  const bytes = base64ToBytes(serialized.blobBase64);
   const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-  return new Blob([buffer], { type: mimeType || "application/octet-stream" });
+
+  return {
+    id: serialized.id,
+    evidenceItemId: serialized.evidenceItemId,
+    blob: new Blob([buffer], { type: serialized.mimeType || "application/octet-stream" }),
+    sizeBytes: serialized.sizeBytes,
+    mimeType: serialized.mimeType,
+    originalFilename: serialized.originalFilename,
+    createdAt: serialized.createdAt,
+    updatedAt: serialized.updatedAt,
+    encrypted: serialized.encrypted,
+    encryptionIv: serialized.encryptionIvBase64 ? base64ToBytes(serialized.encryptionIvBase64) : undefined,
+  };
 }
 
 async function readBackupFile(file: File): Promise<EncryptedVaultBackup> {
@@ -329,18 +352,7 @@ export async function exportEncryptedBackup(backupPassphrase: string): Promise<v
   ]);
 
   const serializedAttachments = await Promise.all(
-    attachments.map(async (attachment) => ({
-      id: attachment.id,
-      evidenceItemId: attachment.evidenceItemId,
-      blobBase64: await blobToBase64(attachment.blob),
-      sizeBytes: attachment.sizeBytes,
-      mimeType: attachment.mimeType,
-      originalFilename: attachment.originalFilename,
-      createdAt: attachment.createdAt,
-      updatedAt: attachment.updatedAt,
-      encrypted: attachment.encrypted,
-      encryptionIvBase64: attachment.encryptionIv ? bytesToBase64(attachment.encryptionIv) : undefined,
-    }))
+    attachments.map((attachment) => serializeAttachmentForBackup(attachment))
   );
 
   const snapshot: VaultBackupSnapshot = {
@@ -402,18 +414,7 @@ export async function importEncryptedBackup(
   const { snapshot } = await decryptVerifiedSnapshot(file, backupPassphrase);
 
   const restoredAttachments: AttachmentRecord[] = normalizedOptions.includeAttachments
-    ? snapshot.tables.attachments.map((attachment) => ({
-        id: attachment.id,
-        evidenceItemId: attachment.evidenceItemId,
-        blob: base64ToBlob(attachment.blobBase64, attachment.mimeType),
-        sizeBytes: attachment.sizeBytes,
-        mimeType: attachment.mimeType,
-        originalFilename: attachment.originalFilename,
-        createdAt: attachment.createdAt,
-        updatedAt: attachment.updatedAt,
-        encrypted: attachment.encrypted,
-        encryptionIv: attachment.encryptionIvBase64 ? base64ToBytes(attachment.encryptionIvBase64) : undefined,
-      }))
+    ? snapshot.tables.attachments.map((attachment) => deserializeAttachmentFromBackup(attachment))
     : [];
 
   await db.transaction(

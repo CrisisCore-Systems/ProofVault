@@ -38,3 +38,7 @@ export function nowAsLocalDateTimeString(): string {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
+
+export function nowAsLocalDateTimeString(): string {
+  return format(new Date(), "yyyy-MM-dd'T'HH:mm");
+}
