@@ -28,14 +28,14 @@ Proof verification can detect tampering, missing records, and stale exports rela
 
 ### Test coverage is incomplete in security-critical paths
 
-There is targeted coverage for proof manifests, verification reporting, export privacy policy, attachment encryption, backup attachment serialization, and staged restore plus rollback mechanics. Coverage is still thinner at the UI integration and browser-runtime boundary than at the module boundary.
+There is targeted coverage for proof manifests, verification reporting, export privacy policy, attachment encryption, backup attachment serialization, staged restore plus rollback mechanics, and Security-route restore and rollback states. Coverage is still thinner across the broader browser-runtime boundary than at the module boundary.
 
 ## Open hardening priorities
 
 ### Now
 
 - publish the updated trust posture without understating current protections
-- add browser-level integration coverage across restore confirmation, rollback activation, and lock state changes
+- add browser-level integration coverage beyond the current restore and rollback path coverage, especially lock state changes and backup export failures
 - keep fixture and trust-dossier claims aligned as serializer and restore behavior evolve
 
 ### Next

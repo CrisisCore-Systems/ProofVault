@@ -11,7 +11,7 @@ This trust case is limited to the behavior implemented in the current repository
 | Area | Current guarantee | Evidence source | Boundary / caveat |
 | --- | --- | --- | --- |
 | Local authority | Core capture, review, export, and verification workflows run locally in-browser without a required account or network dependency. | `README.md`, `src/app/routes/Security.tsx`, `src/app/routes/StandaloneVerifier.tsx` | Browser and device integrity are assumed while the vault is unlocked. |
-| Storage confidentiality | Sensitive vault content is encrypted at rest using Web Crypto based key derivation and AES-GCM wrappers. | `src/lib/crypto/vault.ts`, `src/features/security/crypto.ts`, `src/features/security/storage.ts` | Does not protect against an attacker who already controls the unlocked device or browser process. |
+| Storage confidentiality | Sensitive vault content and protected attachments are encrypted at rest using Web Crypto based key derivation and AES-GCM wrappers before persistence. | `src/features/security/crypto.ts`, `src/features/security/storage.ts`, `src/features/vault/attachmentCrypto.ts`, `src/db/queries.ts` | Does not protect against an attacker who already controls the unlocked device or browser process. |
 | Export integrity | Export packets include a proof manifest, manifest seal, and root fingerprint file for human cross-check. | `src/lib/export/exportBundle.ts`, `src/lib/export/proofVault.ts`, `src/lib/export/integrityFingerprints.ts` | Integrity proves consistency against the checked snapshot, not legal authenticity or origin beyond the local vault state. |
 | Append-only audit trail | Export generation and case events can be linked to a hash-chained ledger. | `src/features/ledger/chain.ts` | This is a local append-only chain, not an external transparency log. |
 | External verification | A proof manifest can be verified against either the live vault state or an encrypted backup snapshot without importing records into the verifier database. | `src/features/exports/useExportBuilder.ts`, `src/app/routes/StandaloneVerifier.tsx`, `src/features/security/backup.ts`, `src/lib/export/proofVerifier.ts` | Verifier trust still depends on the supplied manifest, backup, passphrases, and browser execution environment. |
@@ -76,7 +76,7 @@ This trust case assumes:
 ### Recoverability stance
 
 - ProofVault favors local encrypted backup over service-dependent sync.
-- Restore preview exposes conflicts before import.
+- Restore preview exposes conflicts before import, and live restore promotion is staged plus rollback-backed by default.
 - Recovery is only as strong as passphrase retention and backup hygiene.
 
 ### Abuse and failure boundaries
@@ -93,9 +93,9 @@ Now:
 - Treat verifier outputs and fingerprint cross-checks as the public proof surface.
 
 Next:
-- Add integration coverage for export-to-verify-to-backup flows.
+- Add broader integration coverage for export-to-verify-to-backup flows beyond the current restore and rollback UI paths.
 - Publish project-specific PLS thresholds instead of relying on a provisional disclosure.
-- Tighten export privacy guarantees so policy claims and actual field omission cannot drift.
+- Keep export privacy guarantees and trust-dossier evidence references aligned as code evolves.
 
 Later:
 - Add stronger provenance options, such as explicit fixture signing or external transparency anchoring.

@@ -51,7 +51,7 @@ Version 0.1 includes only these six capabilities:
 
 6. Export packet
 	- clean bundle with case summary, indexed timeline, evidence manifest, attachment references
-	- redacted or full export mode
+	- minimal, redacted, or full export mode
 
 ## Non-goals for v0.1
 
@@ -88,8 +88,10 @@ Top-level tabs:
 - No telemetry in v0.1
 - Two-tier protection model:
   - Tier 1: app/session lock
-  - Tier 2: encrypted sensitive payloads at rest
+	- Tier 2: encrypted sensitive payloads and protected attachments at rest
 - SHA-256 hash stored for imported attachments
+- Encrypted backup export with separate backup passphrase
+- Backup restore stages into a temporary namespace, shows a diff, then requires explicit promotion with rollback capture
 
 ## Export outputs (v0.1)
 
@@ -97,8 +99,9 @@ Top-level tabs:
 	- manifest.json
 	- timeline.csv
 	- timeline.md
-	- attachments/
+	- attachments/ when the chosen export mode includes them
 	- case-summary.txt
+	- optional metadata appendix and ledger audit data when intentionally retained
 
 2. Printable packet
 	- deferred
@@ -116,7 +119,11 @@ Top-level tabs:
 3. Attachments (import, hash, metadata)
 4. Cases (create, assign, detail)
 5. Timeline (chronological view, filters, item detail)
-6. Export (manifest, ZIP, redacted/full)
+6. Export (manifest, ZIP, minimal/redacted/full)
+
+## Runtime boundary
+
+ProofVault currently ships as a plain Vite React browser application. The repository does not currently evidence a service worker, installable PWA shell, or stronger offline-hardening runtime beyond the browser's normal local execution model.
 
 ## Seven-day sprint guide
 
