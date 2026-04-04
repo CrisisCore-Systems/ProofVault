@@ -169,13 +169,31 @@ ProofVault is for when those conditions fail.
 
 ProofVault includes a release-bound trust case with a pinned specimen, reproducibility checks, and hosted-CI drift enforcement.
 
+Current public claim set:
+
+- local-first encrypted browser app
+- release-bound trust case
+- protected attachments at rest
+- staged restore with rollback
+- external verification against backup snapshot
+
+Current explicit non-claims:
+
+- hardened PWA
+- anti-forensic protection
+- safety against a hostile unlocked device
+- formal PLS tier
+
 - Trust case dossier: [docs/trust-case/README.md](./docs/trust-case/README.md)
 - Pinned specimen: [docs/trust-case/demo/README.md](./docs/trust-case/demo/README.md)
 - Case study: [docs/trust-case/CASE_STUDY.md](./docs/trust-case/CASE_STUDY.md)
+- Current release note: [docs/trust-case/RELEASE_NOTE_v1.1.0.md](./docs/trust-case/RELEASE_NOTE_v1.1.0.md)
+- Hardening backlog: [docs/trust-case/HARDENING_BACKLOG.md](./docs/trust-case/HARDENING_BACKLOG.md)
 - Public release tags:
 	- `proofvault-trust-case-v1.0`
 	- `proofvault-trust-case-v1.0.1`
+	- `proofvault-trust-case-v1.1.0`
 
-The corrected hosted-green non-debug trust-case release is `proofvault-trust-case-v1.0.1`, tied to commit `dc5fbe9`.
+The current trust-case release is `proofvault-trust-case-v1.1.0`.
 
 The frozen specimen is continuously revalidated in CI through `.github/workflows/trust-case.yml` and the local `npm run check:trust-case` gate.

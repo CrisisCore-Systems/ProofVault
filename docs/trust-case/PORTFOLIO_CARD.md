@@ -1,12 +1,12 @@
-# ProofVault Trust Case v1.0.1
+# ProofVault Trust Case v1.1.0
 
 ## Subhead
 
-A reproducible trust case for a local-first encrypted browser evidence app, with a pinned specimen, drift enforcement, and a public release tied to an exact hosted-green commit.
+A release-bound trust case for a local-first encrypted browser evidence app, with a pinned specimen, drift enforcement, explicit claim discipline, and a public release that reflects the latest hardening pass.
 
 ## Summary
 
-ProofVault now carries part of its own proof burden in the repository. I built a trust dossier, a pinned specimen, automated regeneration and drift detection, and a hosted-CI-enforced release path that makes trust claims inspectable instead of aspirational.
+ProofVault now carries part of its own proof burden in the repository. The trust dossier, pinned specimen, automated regeneration, drift detection, and hosted-CI release path are now paired with stronger real protections: protected attachments at rest, serializer-enforced minimal or redacted exports, staged restore with rollback, and external verification against backup snapshots.
 
 ## What I built
 
@@ -15,7 +15,8 @@ ProofVault now carries part of its own proof burden in the repository. I built a
 * verifier path showing valid and tampered behavior
 * local and hosted-CI specimen regeneration
 * drift detection that fails when trust-critical output changes
-* public release tags preserving provenance across `v1.0` and `v1.0.1`
+* public release tags preserving provenance across `v1.0`, `v1.0.1`, and `v1.1.0`
+* route-level and module-level coverage for staged restore and rollback behavior
 
 ## What made this hard
 
@@ -32,9 +33,9 @@ ProofVault now carries part of its own proof burden in the repository. I built a
 ## Outcome
 
 * trust specimen is reproducible and release-bound
-* hosted CI validates the final non-debug release tree
-* `proofvault-trust-case-v1.0` remains immutable
-* `proofvault-trust-case-v1.0.1` publishes the corrected hosted-stable release
+* hosted CI validates the current release tree
+* `proofvault-trust-case-v1.0` and `proofvault-trust-case-v1.0.1` remain immutable historical cuts
+* `proofvault-trust-case-v1.1.0` publishes the current hardening pass with corrected trust evidence references and stronger restore coverage
 
 ## Impact line
 
@@ -48,9 +49,7 @@ Trust made legible, reproducible, and release-bound.
 
 ## Shorter portfolio variant
 
-**ProofVault Trust Case v1.0.1**
-
-Built a reproducible trust case for a local-first encrypted browser evidence app, including a pinned specimen, verifier path, drift detection, and hosted-CI-enforced release integrity. Diagnosed and fixed cross-environment specimen drift at source instead of weakening the invariant. Final result: a public trust-case release tied to an exact hosted-green non-debug commit.
+Built a release-bound trust case for a local-first encrypted browser evidence app, including a pinned specimen, verifier path, drift detection, protected attachments at rest, staged restore with rollback, and hosted-CI-enforced release integrity. The public dossier now carries its own delta audit, showing where hard review found seams and how those seams were fixed.
 
 ## CTA link copy
 

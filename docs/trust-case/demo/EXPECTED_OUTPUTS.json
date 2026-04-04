@@ -1,7 +1,7 @@
 {
-  "release": "ProofVault Trust Case v1.0",
+  "release": "ProofVault Trust Case v1.1.0",
   "build": {
-    "gitRef": "bd968e91a1fd58384b2af2eb389402728c9980f3",
+    "gitRef": "proofvault-trust-case-v1.1.0",
     "generatedAt": "2026-03-13T16:20:00.000Z",
     "runtime": {
       "node": "v22.19.0",

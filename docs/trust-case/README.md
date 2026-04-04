@@ -12,6 +12,8 @@ It is not a product vision deck and it is not a security marketing page. It is a
 - [THREAT_MODEL.md](./THREAT_MODEL.md): architecture-specific threats, abuse cases, and failure states.
 - [PLS_DISCLOSURE.md](./PLS_DISCLOSURE.md): self-assessment against Protective Legitimacy expectations, including withheld claims.
 - [DELTA_AUDIT.md](./DELTA_AUDIT.md): first-pass versus recrawl status table for the most important protective findings.
+- [RELEASE_NOTE_v1.1.0.md](./RELEASE_NOTE_v1.1.0.md): current trust-case release note and public claim discipline for the latest tagged cut.
+- [HARDENING_BACKLOG.md](./HARDENING_BACKLOG.md): named follow-up issues for the next hardening cycle.
 - [VERIFICATION_WALKTHROUGH.md](./VERIFICATION_WALKTHROUGH.md): end-to-end export and verification procedure.
 - [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md): current weaknesses, coverage gaps, and risks that still require hardening.
 - [demo/README.md](./demo/README.md): reproducibility fixture pack contract.
@@ -61,11 +63,11 @@ Published public trust-case tags:
 
 - `proofvault-trust-case-v1.0`
 - `proofvault-trust-case-v1.0.1`
+- `proofvault-trust-case-v1.1.0`
 
-Current corrected hosted-green non-debug release:
+Current release:
 
-- tag: `proofvault-trust-case-v1.0.1`
-- commit: `dc5fbe9`
+- tag: `proofvault-trust-case-v1.1.0`
 
 Ongoing publication gate:
 

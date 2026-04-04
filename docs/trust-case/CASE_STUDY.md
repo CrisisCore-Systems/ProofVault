@@ -1,12 +1,12 @@
 # ProofVault Trust Case Case Study
 
-**ProofVault Trust Case v1.0.1** is not a marketing claim about trust. It is a worked example of how to make trust legible, reproducible, and release-bound.
+**ProofVault Trust Case v1.1.0** is not a marketing claim about trust. It is a worked example of how to make trust legible, reproducible, release-bound, and updateable after a hard recrawl finds real seams.
 
 Many projects say they care about security, privacy, or integrity. Far fewer can point to a concrete specimen, regenerate it from the repository, detect drift automatically, show what tampering looks like, and identify the exact hosted-green release tree tied to a public tag.
 
 ProofVault now does.
 
-This case study explains what was built, why it matters, and what the release process actually proved.
+This case study explains what was built, what the later hardening pass changed, and what the current release process actually proves.
 
 ## The problem
 
@@ -52,6 +52,14 @@ The repository can now say:
 * here is the exact release tree that passed hosted CI
 * here is the public tag tied to that proof
 
+And in the current release it can say a bit more than before, credibly and with evidence:
+
+* exports can be produced in `minimal`, `redacted`, or `full` mode
+* protected attachments are encrypted at rest
+* restore is staged before promotion and captures rollback snapshots
+* external verification can run against an encrypted backup snapshot
+* the runtime boundary remains a plain browser app, not a hardened PWA claim
+
 That is a different class of credibility than a documentation page or a sentence in a README.
 
 ## The specimen changed the conversation
@@ -76,6 +84,21 @@ The local gate and the GitHub Actions workflow regenerate the specimen and compa
 
 That matters because it binds trust claims to maintenance discipline. The trust case is not merely published once. It is kept under pressure.
 
+## The delta audit became part of the proof
+
+The strongest signal in the current release is not that the first trust cut was flawless. It is that a later recrawl found real seams, those seams were fixed at source, and the trust dossier was updated to match the corrected implementation.
+
+That is what `DELTA_AUDIT.md` records.
+
+The public repository now carries evidence that:
+
+* a hard review found dead evidence references and trust-doc drift
+* restore and rollback behavior needed stronger direct coverage
+* attachment confidentiality and export privacy claims needed to be tied more tightly to the actual serializer and storage boundaries
+* the fixes were made, tested, and reflected back into the trust dossier
+
+That is stronger than pretending the repo never needed correction.
+
 ## Hosted CI mattered more than local success
 
 One of the most important parts of this work happened after the local system already looked correct.
@@ -98,13 +121,15 @@ Temporary CI diagnostics were added only long enough to expose the hosted-runner
 
 That sequence matters as much as the fixes themselves. It shows that the release process was not green by accident. It was made legible under the same hosted surface the public repository actually depends on.
 
-## Why v1.0 and v1.0.1 both matter
+## Why v1.0, v1.0.1, and v1.1.0 all matter
 
 The release history is part of the trust case.
 
 `proofvault-trust-case-v1.0` remains the first public trust-case cut. It was not moved or rewritten after publication.
 
 `proofvault-trust-case-v1.0.1` exists because the project found and corrected real cross-environment specimen drift, proved the fixes on hosted CI, removed temporary diagnostics, and tagged the final non-debug tree.
+
+`proofvault-trust-case-v1.1.0` exists because the project then treated a harder recrawl the same way: dead evidence paths were corrected, public trust surfaces were updated, restore and rollback gained dedicated UI and module coverage, and the next release cut was made to carry those corrections explicitly.
 
 That preserves something important: provenance.
 
@@ -121,7 +146,7 @@ It does prove that the project can:
 * make tampering visible through a verifier path
 * detect cross-environment drift in trust-critical output
 * fix release-surface mismatches without weakening the invariant
-* publish a public tag tied to an exact hosted-green tree
+* publish a public tag tied to a checked specimen and a maintained trust dossier
 
 That is the core of the case study.
 
@@ -143,13 +168,13 @@ For ProofVault, that makes the trust case a credibility pillar. For Protective C
 
 ## Final release state
 
-The corrected public trust-case release is:
+The current public trust-case release is:
 
-* tag: `proofvault-trust-case-v1.0.1`
-* final hosted-green non-debug release commit: `dc5fbe9`
+* tag: `proofvault-trust-case-v1.1.0`
 
-The original public cut remains:
+Earlier public cuts remain:
 
 * tag: `proofvault-trust-case-v1.0`
+* tag: `proofvault-trust-case-v1.0.1`
 
 That is the final shape of the case study: not a statement of values, but a system that can show its work.

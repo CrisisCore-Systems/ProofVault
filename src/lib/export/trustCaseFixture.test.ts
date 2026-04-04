@@ -187,6 +187,32 @@ function getRepoRoot(): string {
   return process.cwd();
 }
 
+async function resolvePinnedReleaseName(repoRoot: string): Promise<string> {
+  const requestedReleaseName = process.env.TRUST_CASE_RELEASE?.trim();
+
+  if (requestedReleaseName) {
+    return requestedReleaseName;
+  }
+
+  try {
+    const expectationText = await readFile(
+      path.join(repoRoot, "docs", "trust-case", "demo", "EXPECTED_OUTPUTS.json"),
+      "utf8"
+    );
+    const parsed = JSON.parse(expectationText) as {
+      release?: unknown;
+    };
+
+    if (typeof parsed.release === "string" && parsed.release.trim().length > 0) {
+      return parsed.release;
+    }
+  } catch {
+    // Fall back to the default release label during initial specimen generation.
+  }
+
+  return "ProofVault Trust Case v1.1.0";
+}
+
 function getSpecimenOutputDir(repoRoot: string): string {
   const override = process.env.TRUST_CASE_OUTPUT_DIR?.trim();
 
@@ -333,6 +359,7 @@ describe("trust case fixture generator", () => {
     const backupPassphrase = ["backup", "passphrase", "fixture"].join("-");
     const repoRoot = getRepoRoot();
     const demoDir = getSpecimenOutputDir(repoRoot);
+    const pinnedReleaseName = await resolvePinnedReleaseName(repoRoot);
 
     const pinnedGitRef = await resolvePinnedGitRef(repoRoot);
     const pinnedNodeRuntime = await resolvePinnedNodeRuntime(repoRoot);
@@ -794,7 +821,7 @@ describe("trust case fixture generator", () => {
 
     const certificateHtml = generateClinicalVerificationCertificateHtml(validReport);
     const expectations = {
-      release: "ProofVault Trust Case v1.0",
+      release: pinnedReleaseName,
       build: {
         gitRef: pinnedGitRef,
         generatedAt: "2026-03-13T16:20:00.000Z",
