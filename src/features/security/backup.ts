@@ -351,20 +351,7 @@ export function deserializeAttachmentFromBackup(serialized: SerializedAttachment
 }
 
 async function serializeAttachments(attachments: AttachmentRecord[]): Promise<SerializedAttachmentRecord[]> {
-  return Promise.all(
-    attachments.map(async (attachment) => ({
-      id: attachment.id,
-      evidenceItemId: attachment.evidenceItemId,
-      blobBase64: await blobToBase64(attachment.blob),
-      sizeBytes: attachment.sizeBytes,
-      mimeType: attachment.mimeType,
-      originalFilename: attachment.originalFilename,
-      createdAt: attachment.createdAt,
-      updatedAt: attachment.updatedAt,
-      encrypted: attachment.encrypted,
-      encryptionIvBase64: attachment.encryptionIv ? bytesToBase64(attachment.encryptionIv) : undefined,
-    }))
-  );
+  return Promise.all(attachments.map((attachment) => serializeAttachmentForBackup(attachment)));
 }
 
 async function buildVaultBackupSnapshot(input?: {
@@ -404,18 +391,7 @@ function deserializeAttachments(snapshot: VaultBackupSnapshot, options: VaultRes
     return [];
   }
 
-  return snapshot.tables.attachments.map((attachment) => ({
-    id: attachment.id,
-    evidenceItemId: attachment.evidenceItemId,
-    blob: base64ToBlob(attachment.blobBase64, attachment.mimeType),
-    sizeBytes: attachment.sizeBytes,
-    mimeType: attachment.mimeType,
-    originalFilename: attachment.originalFilename,
-    createdAt: attachment.createdAt,
-    updatedAt: attachment.updatedAt,
-    encrypted: attachment.encrypted,
-    encryptionIv: attachment.encryptionIvBase64 ? base64ToBytes(attachment.encryptionIvBase64) : undefined,
-  }));
+  return snapshot.tables.attachments.map((attachment) => deserializeAttachmentFromBackup(attachment));
 }
 
 async function buildRestoreDiff(snapshot: VaultBackupSnapshot, options: VaultRestoreOptions): Promise<{

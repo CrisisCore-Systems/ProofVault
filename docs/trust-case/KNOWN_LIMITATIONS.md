@@ -12,15 +12,15 @@ Session keys, decrypted attachments, and redaction intermediates exist in browse
 
 ### Backup usability and backup security pull against each other
 
-Backups are separately encrypted, which is good for compartmentalization, but the dual-passphrase model increases user confusion risk. The minimum backup passphrase check is length-based and does not ensure strong entropy.
+Backups are separately encrypted, which is good for compartmentalization, but the dual-passphrase model still increases user confusion risk. The current passphrase policy is materially stronger than a length-only check, but backup safety still depends on the user choosing and retaining a distinct high-entropy backup passphrase.
 
 ### Export privacy depends on correct mode selection
 
-The export flow supports reduced-disclosure modes, but privacy still depends on the user selecting the intended export options before the ZIP leaves the device.
+The export flow now enforces serializer-layer disclosure policies for `full`, `redacted`, and `minimal` modes. Residual privacy risk still depends on the user selecting the intended mode before the ZIP leaves the device.
 
 ### Metadata minimization still needs hardening
 
-The current trust posture should be conservative about filename, narrative, and appendix leakage. Where policy claims and actual export behavior could drift, the trust case should defer to the more conservative interpretation until stronger enforcement is added.
+Filename and attachment-hash stripping are now enforced for reduced-disclosure exports, and minimal mode disables attachments and appendix metadata entirely. The remaining conservative boundary is that browser-side narrative handling and user mode selection still determine how much context is intentionally disclosed.
 
 ### Verification proves consistency, not universal truth
 
@@ -28,21 +28,21 @@ Proof verification can detect tampering, missing records, and stale exports rela
 
 ### Test coverage is incomplete in security-critical paths
 
-There is targeted coverage for proof manifests, verification reporting, and export artifacts, but major security-sensitive modules still lack direct tests or end-to-end integration coverage.
+There is targeted coverage for proof manifests, verification reporting, export privacy policy, attachment encryption, backup attachment serialization, and staged restore plus rollback mechanics. Coverage is still thinner at the UI integration and browser-runtime boundary than at the module boundary.
 
 ## Open hardening priorities
 
 ### Now
 
-- generate and freeze a public reproducibility fixture
-- add integration coverage across export, backup, and standalone verification
-- tighten export field omission so privacy guarantees are enforced at construction time
+- publish the updated trust posture without understating current protections
+- add browser-level integration coverage across restore confirmation, rollback activation, and lock state changes
+- keep fixture and trust-dossier claims aligned as serializer and restore behavior evolve
 
 ### Next
 
 - publish project-local PLS thresholds
-- improve passphrase guidance and reduce confusion between vault and backup credentials
-- expand direct test coverage for backup, session, storage, and rotation paths
+- reduce user confusion between vault and backup credentials in the UI and fixture walkthrough
+- expand direct test coverage for session, storage, and rotation paths
 
 ### Later
 

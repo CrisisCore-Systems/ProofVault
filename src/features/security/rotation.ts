@@ -1,4 +1,3 @@
-import type { AttachmentRecord } from "../../domain/types";
 import { db } from "../../db/index";
 import { getSessionKeyOrThrow, prepareSessionConfig, verifyPassphrase, applyPreparedSessionConfig } from "./session";
 import {

@@ -20,9 +20,9 @@ Current status is a provisional self-assessment only:
 The following would block any future tier claim until resolved:
 
 - no versioned PLS thresholds exist in the repository
-- the current release fixture is deterministic and checked in, but it is still a single specimen rather than a broader release matrix
-- the new integration generator covers one full export, backup, and verification chain, but broader scenario coverage remains limited
-- export privacy guarantees are not yet strong enough to claim airtight metadata minimization across modes
+- the current release fixture is deterministic and checked in, but it is still anchored to one primary specimen ZIP even though the expectation file now records a broader release matrix
+- browser-runtime compromise while unlocked remains outside the protection boundary
+- no installable service-worker-backed offline runtime is currently evidenced in this repository
 
 ## Known deviations from an ideal protective system
 
@@ -36,14 +36,14 @@ The following would block any future tier claim until resolved:
 
 - session key lifecycle hardening remains limited by current in-memory handling
 - browser-based redaction and decryption workflows have no strong memory cleanup guarantees
-- sensitive metadata omission is policy-driven and should be hardened further at the export construction boundary
+- reduced-disclosure export guarantees are materially stronger now, but the user can still intentionally choose a higher-disclosure mode
 - fixture publication and release locking are process requirements, not yet automated controls
 
 ## What would be required to claim a tier
 
 1. Publish a concrete PLS rubric with explicit pass and fail thresholds.
 2. Freeze a release-specific trust-case fixture and include its expected outputs.
-3. Add integration coverage for export generation, backup generation, standalone verification, and tamper detection.
+3. Add integration coverage for export generation, backup generation, staged restore promotion and rollback, standalone verification, and tamper detection.
 4. Close the most important privacy and session-lifecycle deviations or scope them out explicitly in the rubric.
 5. Re-score the build against that published rubric and record the failures as part of the release.
 

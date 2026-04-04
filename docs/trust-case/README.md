@@ -11,6 +11,7 @@ It is not a product vision deck and it is not a security marketing page. It is a
 - [TRUST_CASE.md](./TRUST_CASE.md): system guarantees, trust boundaries, assumptions, and defensibility packet.
 - [THREAT_MODEL.md](./THREAT_MODEL.md): architecture-specific threats, abuse cases, and failure states.
 - [PLS_DISCLOSURE.md](./PLS_DISCLOSURE.md): self-assessment against Protective Legitimacy expectations, including withheld claims.
+- [DELTA_AUDIT.md](./DELTA_AUDIT.md): first-pass versus recrawl status table for the most important protective findings.
 - [VERIFICATION_WALKTHROUGH.md](./VERIFICATION_WALKTHROUGH.md): end-to-end export and verification procedure.
 - [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md): current weaknesses, coverage gaps, and risks that still require hardening.
 - [demo/README.md](./demo/README.md): reproducibility fixture pack contract.
